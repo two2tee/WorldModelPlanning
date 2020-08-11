@@ -1,0 +1,224 @@
+{
+    "game": "CarRacing-v0",
+    "experiment_name": "World_Model_C",
+    "forced_vae": "World_Model_A",
+    "latent_size": 64,
+    "num_reconstructions": 64,
+    "is_generate_data": false,
+    "is_train_vae": false,
+    "is_train_mdrnn": false,
+    "is_iterative_train_mdrnn": true,
+    "is_ntbea_param_tune": false,
+    "is_play": false,
+    "is_dream_play": false,
+    "is_manual_control": false,
+    "vae_dir": "vae",
+    "mdrnn_dir": "mdrnn",
+    "data_dir": "data",
+    "test_data_dir": "data_test",
+    "is_pretrained_agent_rollouts_for_testing": true,
+    "ntbea_tuning":{
+        "is_reload_session": false,
+        "session_name": "ntbea_session_World_Model_M_RHEA",
+        "iterations": 100,
+        "mutation_point_probability": 0.5,
+        "explore_rate": 2.0,
+        "ucb_random_noise": 0.5,
+        "eval_neighbours": 50,
+        "samples_per_eval": 1,
+        "shift_buffer_options": [true, false],
+        "horizon_options": [5, 10, 15, 20],
+        "generation_options": [1, 5, 10, 15, 20],
+        "is_rollout_options": [false],
+        "max_rollout_options": [1],
+        "mutation_options":["single_uniform", "all_uniform", "subset_mutation"],
+        "RHEA_population_size": [2, 4, 8, 16],
+        "RHEA_genetic_operator_options": ["crossover","mutation","crossover_mutation"],
+        "RHEA_selection_options": ["uniform","tournament","rank","roulette"],
+        "RHEA_crossover_methods_options": ["uniform","1_bit","2_bit"]
+    },
+    "visualization": {
+        "is_render": false,
+        "is_render_trajectory": false,
+        "is_render_best_elite_only": false,
+        "is_render_fitness": false,
+        "is_render_simulation": false,
+        "is_render_dream": false,
+        "is_render_reconstructions": false
+    },
+    "test_suite": {
+        "is_run_model_tests": false,
+        "is_run_planning_tests":  false,
+        "is_reload_planning_session": false,
+        "trials": 3,
+        "is_multithread": false,
+        "planning_test_log_dir": "planning_test_results",
+        "planning_session_to_load": "RHEA_World_Model_L_planning_session_2020-05-20-00.00_total_session_best_reward_804.0589_BEST"
+    },
+    "data_generator": {
+        "data_output_dir": "data",
+        "data_prefix": "",
+        "is_ha_agent_driver": false,
+        "rollouts": 10000,
+        "sequence_length": 1000,
+        "is_corners_only": false,
+        "corner_type" : "right"
+    },
+    "preprocessor": {
+        "num_channels": 3,
+        "img_width": 64,
+        "img_height": 64
+    },
+    "vae_trainer": {
+        "max_epochs": 20,
+        "batch_size": 35,
+        "learning_rate": 0.0001,
+        "train_buffer_size": 50,
+        "test_buffer_size": 50,
+        "num_workers": 0,
+        "is_save_reconstruction": true,
+        "is_continue_model": true,
+        "vae_best_filename": "vae_best.tar",
+        "vae_checkpoint_filename": "vae_checkpoint.tar"
+    },
+    "vae": {
+        "encoder": {
+            "convolution": {
+                "layer_1": {
+                    "in": 3,
+                    "out": 32,
+                    "filter_size": 4,
+                    "strides": 2
+                },
+                "layer_2": {
+                    "in": 32,
+                    "out": 64,
+                    "filter_size": 4,
+                    "strides": 2
+                },
+                "layer_3": {
+                    "in": 64,
+                    "out": 128,
+                    "filter_size": 4,
+                    "strides": 2
+                },
+                "layer_4": {
+                    "in": 128,
+                    "out": 256,
+                    "filter_size": 4,
+                    "strides": 2
+                }
+            },
+            "dense": {
+                "in":1024
+            }
+        },
+        "decoder": {
+            "dense": {
+                "out": 1024
+            },
+            "deconvolution": {
+                "layer_1": {
+                    "in": 1024,
+                    "out": 128,
+                    "filter_size": 5,
+                    "strides": 2
+                },
+                "layer_2": {
+                    "in": 128,
+                    "out": 64,
+                    "filter_size": 5,
+                    "strides": 2
+                },
+                "layer_3": {
+                    "in": 64,
+                    "out": 32,
+                    "filter_size": 6,
+                    "strides": 2
+                },
+                "layer_4": {
+                    "in": 32,
+                    "out": 3,
+                    "filter_size": 6,
+                    "strides": 2
+                }
+            }
+        }
+    },
+    "mdrnn":{
+        "hidden_units": 512,
+        "num_gaussians": 5
+    },
+    "mdrnn_trainer":{
+        "max_epochs": 20,
+        "learning_rate": 0.001,
+        "gradient_clip": 1.0,
+        "sequence_length": 500,
+        "batch_size": 16,
+        "train_buffer_size": 30,
+        "test_buffer_size": 10,
+        "train_files_ratio": 0.5,
+        "num_workers": 0,
+        "is_continue_model": true,
+        "mdrnn_best_filename": "mdrnn_best.tar",
+        "mdrnn_checkpoint_filename": "mdrnn_checkpoint.tar"
+    },
+    "iterative_trainer":{
+        "iterative_data_dir": "data_iterative",
+        "sequence_length": 250,
+        "num_rollouts": 1000,
+        "num_iterations": 10,
+        "max_epochs": 10,
+        "test_scenario": "planning_whole_random_track",
+        "is_random_policy_not_planning": false,
+        "is_parallel": true,
+        "fixed_cpu_cores": null
+    },
+    "simulated_environment": {
+        "temperature": 1.15,
+        "steer_delta": 0.1,
+        "gas_delta": 0.2,
+        "max_gas": 1,
+        "max_brake": -1
+    },
+    "evolution_handler": {
+        "selection_method": "tournament",
+        "genetic_operator": "crossover_mutation",
+        "crossover_method": "1_bit",
+        "mutation_method": "subset_mutation",
+        "mutation_probability": 0.2,
+        "tournament_percentage": 0.5,
+        "seed": "None"
+    },
+    "planning": {
+        "planning_agent": "RMHC",
+        "is_discretize_sampling": false,
+        "rolling_horizon": {
+            "population_size": 8,
+            "horizon": 10,
+            "max_generations": 15,
+            "is_shift_buffer": false,
+            "is_rollout": false,
+            "max_rollouts": 1,
+            "rollout_length": 10,
+            "is_parallel_rollouts": false,
+            "is_delta_sampling": false
+        },
+        "random_mutation_hill_climb": {
+            "horizon": 10,
+            "max_generations": 15,
+            "is_shift_buffer": false,
+            "is_rollout": false,
+            "max_rollouts": 1,
+            "rollout_length": 20,
+            "is_parallel_rollouts": false,
+            "is_delta_sampling": false
+        },
+        "monte_carlo_tree_search": {
+            "max_rollouts": 50,
+            "rollout_length": 20,
+            "temperature": 1.41,
+            "is_discrete_delta": true
+        }
+    }
+}

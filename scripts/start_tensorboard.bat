@@ -1,0 +1,1 @@
+conda activate pytorch && start chrome.exe http://localhost:6006/ && tensorboard --logdir ../utility/tensorboard_runs

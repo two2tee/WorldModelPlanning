@@ -1,0 +1,17 @@
+Create private SSH key and associated passphrase
+https://docs.joyent.com/public-cloud/getting-started/ssh-keys/generating-an-ssh-key-manually/manually-generating-your-ssh-key-in-windows
+
+Connect to REAL machine with path to private SSH key, user name and enter passphrase when prompted
+Ssh -i <path to private ssh key> -p 22 <username>@real2.itu.dk
+Example: ssh -i ~/.ssh/id_rsa -p 22 thor@real2.itu.dk 
+Cyberduck SFTP: connect to real2.itu.dk with port 22 and user name and your private passphrase
+
+Create uninterrupted screen with screen Linux command:
+Create screen: Screen -S <session_name> → Example: screen -S thesis_experiment
+Resume: Screen -r
+List screens: screen -ls
+Detach: Ctrl+a d (NB: Ctrl+c is interrupt whole code process if you wanna stop!) Ctrl-a+d is quit SSH
+Kill: screen -X -S <session_id> quit Create: Screen -S <session_name> 
+
+Run code:  xvfb-run -a -s "-screen 0 1280x1024x24" -- python main.py 
+Flow: create screen → run xvfb code → detach → ctrl+d to quit ssh (ctrl+c to quit code) 

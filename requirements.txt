@@ -1,0 +1,8 @@
+conda gym[all]
+box2d
+tqdm
+numpy
+matplotlib
+tensorboard
+torchvision
+dill

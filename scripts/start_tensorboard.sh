@@ -1,0 +1,1 @@
+tensorboard --logdir utility/tensorboard_runs
