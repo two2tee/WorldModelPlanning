@@ -1,6 +1,6 @@
 {
     "game": "CarRacing-v0",
-    "experiment_name": "World_Model_C",
+    "experiment_name": "World_Model_D",
     "forced_vae": "World_Model_A",
     "latent_size": 64,
     "num_reconstructions": 64,
@@ -165,7 +165,7 @@
     },
     "iterative_trainer":{
         "iterative_data_dir": "data_iterative",
-        "sequence_length": 250,
+        "sequence_length": 500,
         "num_rollouts": 1000,
         "num_iterations": 10,
         "max_epochs": 10,
