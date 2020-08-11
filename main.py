@@ -15,7 +15,7 @@ from tuning.ntbea_wrapper import PlanningNTBEAWrapper
 from utility.rollout_generator_factory import get_rollout_generator
 from tests.test_suite_factory import get_model_tester, get_planning_tester
 from utility.tensorboard_handler import TensorboardHandler
-from environment.real_environment import EnvironmentWrapper
+from environment.environment_factory import get_environment
 from mdrnn.mdrnn_trainer import MDRNNTrainer as MDRNNTrainer
 from planning.simulation.mcts_simulation import MCTS as MCTS_simulation
 from planning.simulation.rolling_horizon_simulation import RHEA as RHEA_simulation
@@ -29,7 +29,7 @@ class Main:
         self.frame_preprocessor = Preprocessor(self.config['preprocessor'])
         self.logger = TensorboardHandler(is_logging=True)
         self.mdrnn_trainer = MDRNNTrainer(self.config, self.frame_preprocessor, self.logger)
-        self.environment = EnvironmentWrapper(config)  # Set environment
+        self.environment = get_environment(config)  # Set environment
 
 
     def generate_data(self):

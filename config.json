@@ -1,13 +1,13 @@
 {
-    "game": "CarRacing-v0",
-    "experiment_name": "World_Model_C",
-    "forced_vae": "World_Model_A",
+    "game": "viz-doom",
+    "experiment_name": "Vizdoom_World_Model_A",
+    "forced_vae": "Vizdoom_World_Model_A",
     "latent_size": 64,
     "num_reconstructions": 64,
     "is_generate_data": true,
-    "is_train_vae": false,
-    "is_train_mdrnn": false,
-    "is_iterative_train_mdrnn": true,
+    "is_train_vae": true,
+    "is_train_mdrnn": true,
+    "is_iterative_train_mdrnn": false,
     "is_ntbea_param_tune": false,
     "is_play": false,
     "is_dream_play": false,
@@ -57,10 +57,10 @@
     },
     "data_generator": {
         "data_prefix": "",
-        "rollouts": 10000,
+        "rollouts": 1,
         "sequence_length": 1000,
+        "data_output_dir": "data",
         "car_racing": {
-            "data_output_dir": "data_carracing",
             "is_ha_agent_driver": false
         }
     },

@@ -1,8 +1,9 @@
 import os
 import random
-
 import gym
 import numpy as np
+
+from tqdm import tqdm
 from gym.envs.box2d.car_dynamics import Car
 from utility.base_rollout_generator import BaseRolloutGenerator
 
@@ -11,13 +12,15 @@ class RolloutGenerator(BaseRolloutGenerator):
     def __init__(self, config, data_output_dir):
         super().__init__(config,  data_output_dir)
 
-    def _standard_rollout(self):
+    def _standard_rollout(self, thread, current_rollout, rollouts):
         action = [0, 0, 0]
         environment = gym.make("CarRacing-v0")
         model = self._get_model() if self.config["data_generator"]['car_racing']["is_ha_agent_driver"] else None
         obs, _ = self._reset(environment)
         actions_rollout, states_rollout, reward_rollout, is_done_rollout = [], [], [], []
-        for t in range(self.sequence_length):
+
+        progress_description = f"Data generation for {self.config['game']} | thread: {thread} | rollout: {current_rollout}/{rollouts}"
+        for _ in tqdm(range(self.sequence_length + 1), desc=progress_description, position=thread - 1):
             obs, reward, done, info, action = self._step(environment, obs, action, model)
             obs = self._compress_frame(obs, is_resize=True)
             environment.viewer.window.dispatch_events()

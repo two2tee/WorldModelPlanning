@@ -15,3 +15,8 @@ Kill: screen -X -S <session_id> quit Create: Screen -S <session_name>
 
 Run code:  xvfb-run -a -s "-screen 0 1280x1024x24" -- python main.py 
 Flow: create screen → run xvfb code → detach → ctrl+d to quit ssh (ctrl+c to quit code) 
+
+
+supported games
+- CarRacing-v0
+- viz-doom

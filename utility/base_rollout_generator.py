@@ -43,7 +43,7 @@ class BaseRolloutGenerator:
     def _run_rollout_thread(self, rollouts, thread):
         i = 1
         while i < rollouts + 1:
-            actions_rollout, states_rollout, reward_rollout, is_done_rollout = self._standard_rollout()
+            actions_rollout, states_rollout, reward_rollout, is_done_rollout = self._standard_rollout(thread, i, rollouts)
 
             if len(actions_rollout) < 128:  # ensure rollouts contains enough data for sequence
                 print(f'thread: {thread} - Bad rollout with {len(actions_rollout)} actions - retry...')
@@ -54,7 +54,7 @@ class BaseRolloutGenerator:
 
         return thread
 
-    def _standard_rollout(self):
+    def _standard_rollout(self, thread, current_rollout, rollouts):
         return NotImplemented
 
     def _step(self, environment, obs, previous_action, model=None):
@@ -70,7 +70,7 @@ class BaseRolloutGenerator:
 
     def _save_rollout(self, thread, rollout_number, states_rollout, reward_rollout, actions_rollout, is_done_rollout):
         print(f"Thread {thread} - End of rollout {rollout_number}, {len(states_rollout)} frames.")
-        print(self.data_dir, f'thread_{thread}_rollout_{rollout_number}')
+        print(self.data_dir, f'{self.config["game"]}_thread_{thread}_rollout_{rollout_number}')
         np.savez_compressed(file=join(self.data_dir,
                                       f'{self.config["data_generator"]["data_prefix"]}thread_{thread}_resized_rollout_{rollout_number}'),
                             observations=np.array(states_rollout),

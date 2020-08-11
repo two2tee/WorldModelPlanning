@@ -30,7 +30,7 @@ from gym.envs.box2d.car_dynamics import Car
 from utility.preprocessor import Preprocessor
 from tests.test_suite_factory import get_planning_tester
 from planning.simulation.agent_wrapper import AgentWrapper
-from environment.real_environment import EnvironmentWrapper
+from environment.environment_factory import get_environment
 from torch.multiprocessing import Pool, Process, Manager, RLock
 from mdrnn.iteration_stats.iteration_result import IterationResult
 from environment.actions.action_sampler_factory import get_action_sampler
@@ -141,7 +141,7 @@ class IterativeTrainer:
         print(f'Running test for iteration: {iteration}')
         preprocessor = Preprocessor(self.config['preprocessor'])
         vae, mdrnn = self._get_vae_mdrnn()
-        environment = EnvironmentWrapper(self.config)  # Set environment
+        environment = get_environment(self.config)  # Set environment
         tester = get_planning_tester(self.config, vae, mdrnn, preprocessor, environment, self.planning_agent)
         test_name, trials_actions, trials_rewards, trials_elites, trial_max_rewards, seed = tester.run_specific_test(self.test_scenario)
         environment.close()
