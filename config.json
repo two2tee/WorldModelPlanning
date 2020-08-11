@@ -4,7 +4,7 @@
     "forced_vae": "World_Model_A",
     "latent_size": 64,
     "num_reconstructions": 64,
-    "is_generate_data": false,
+    "is_generate_data": true,
     "is_train_vae": false,
     "is_train_mdrnn": false,
     "is_iterative_train_mdrnn": true,
@@ -16,7 +16,7 @@
     "mdrnn_dir": "mdrnn",
     "data_dir": "data",
     "test_data_dir": "data_test",
-    "is_pretrained_agent_rollouts_for_testing": true,
+    "is_use_specific_test_data": true,
     "ntbea_tuning":{
         "is_reload_session": false,
         "session_name": "ntbea_session_World_Model_M_RHEA",
@@ -56,13 +56,13 @@
         "planning_session_to_load": "RHEA_World_Model_L_planning_session_2020-05-20-00.00_total_session_best_reward_804.0589_BEST"
     },
     "data_generator": {
-        "data_output_dir": "data",
         "data_prefix": "",
-        "is_ha_agent_driver": false,
         "rollouts": 10000,
         "sequence_length": 1000,
-        "is_corners_only": false,
-        "corner_type" : "right"
+        "car_racing": {
+            "data_output_dir": "data_carracing",
+            "is_ha_agent_driver": false
+        }
     },
     "preprocessor": {
         "num_channels": 3,
@@ -157,7 +157,7 @@
         "batch_size": 16,
         "train_buffer_size": 30,
         "test_buffer_size": 10,
-        "train_files_ratio": 0.5,
+        "train_test_files_ratio": 0.5,
         "num_workers": 0,
         "is_continue_model": true,
         "mdrnn_best_filename": "mdrnn_best.tar",
@@ -171,15 +171,16 @@
         "max_epochs": 10,
         "test_scenario": "planning_whole_random_track",
         "is_random_policy_not_planning": false,
-        "is_parallel": true,
         "fixed_cpu_cores": null
     },
     "simulated_environment": {
         "temperature": 1.15,
-        "steer_delta": 0.1,
-        "gas_delta": 0.2,
-        "max_gas": 1,
-        "max_brake": -1
+        "car_racing": {
+            "steer_delta": 0.1,
+            "gas_delta": 0.2,
+            "max_gas": 1,
+            "max_brake": -1
+        }
     },
     "evolution_handler": {
         "selection_method": "tournament",

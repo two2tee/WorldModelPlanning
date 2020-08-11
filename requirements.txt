@@ -6,3 +6,5 @@ matplotlib
 tensorboard
 torchvision
 dill
+vizdoom
+colorama

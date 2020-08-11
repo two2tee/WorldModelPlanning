@@ -26,13 +26,14 @@ from vae.vae import VAE
 from mdrnn.mdrnn import MDRNN
 from os.path import join, exists
 from vae.vae_trainer import VaeTrainer
-from tests.test_suite import PlanningTester
 from gym.envs.box2d.car_dynamics import Car
 from utility.preprocessor import Preprocessor
-from torch.multiprocessing import Pool, Process, Manager, RLock
+from tests.test_suite_factory import get_planning_tester
 from planning.simulation.agent_wrapper import AgentWrapper
 from environment.real_environment import EnvironmentWrapper
+from torch.multiprocessing import Pool, Process, Manager, RLock
 from mdrnn.iteration_stats.iteration_result import IterationResult
+from environment.actions.action_sampler_factory import get_action_sampler
 gym.logger.set_level(40)  # Disable user warnings
 
 if platform.system() == "Darwin" or platform.system() == "Linux":
@@ -48,7 +49,6 @@ class IterativeTrainer:
         self.img_width = config["preprocessor"]["img_width"]
         self.img_height = config["preprocessor"]["img_height"]
         self.max_epochs = config["iterative_trainer"]["max_epochs"]
-        self.is_parallel = config["iterative_trainer"]["is_parallel"]
         self.num_rollouts = config["iterative_trainer"]["num_rollouts"]
         self.test_scenario = config["iterative_trainer"]["test_scenario"]
         self.data_dir = config["iterative_trainer"]['iterative_data_dir']
@@ -63,31 +63,24 @@ class IterativeTrainer:
         if not exists(self.data_dir):
             os.mkdir(self.data_dir)
 
-        print(f'data_dir: {self.data_dir} | cores: {self.threads}')
+        print(f'data_dir: {self.data_dir} | cores used: {self.threads}')
 
-    def train(self):  # Generate and store planning rollouts -> retrain iterative MDRNN
-        print('Start Iterative Training')
+    def train(self):
+        print('Started Iterative Training')
         with Manager() as manager:
             iteration_results, iterations_count = self._load_iteration_stats()
             iteration_results = manager.dict(iteration_results)
             test_threads = []
             start_time = time.time()
-            print(f'Iterations trained for model: {iterations_count}')
+
             for _ in tqdm(range(self.num_iterations), desc=f"Current iteration {iterations_count+1}"):  # TODO: replace with "while task (900+ reward) is not completed"
                 iterations_count += 1
                 iteration_results[iterations_count] = IterationResult(iteration=iterations_count)
-                start = time.time()
 
                 self._generate_rollouts(iterations_count)  # Generate n planning rollouts of length T
-                end = round(time.time() - start, 1)
-                print(f"TOTAL GENERATION TIME: {end} seconds | Time per rollout: {round(end / self.num_rollouts, 1)}")
-
-                start = time.time()
                 self._train_mdrnn(copy(iterations_count), iteration_results)
-                end = round(time.time() - start, 1)
-                print(f"TOTAL TRAINING TIME: {end} seconds")
-
                 self._test_planning(iterations_count, iteration_results, test_threads)  # Test plan performance
+
                 print(f'Iterations for model: {iterations_count} - {round((time.time() - start_time), 2)} seconds')
 
             [p.join() for p in test_threads]  # ensure all tests are done before exit
@@ -99,21 +92,16 @@ class IterativeTrainer:
     def _generate_rollouts(self, iteration):
         vae, mdrnn = self._get_vae_mdrnn()
         vae, mdrnn = vae.eval(), mdrnn.eval()
-        if self.is_parallel:
-            self.threads = self.num_rollouts if self.num_rollouts < self.threads else self.threads
-            torch.set_num_threads(1)
-            os.environ['OMP_NUM_THREADS'] ='1'
-            num_rollouts_per_thread = int(self.num_rollouts / self.threads)
-            print(f'{self.num_rollouts} rollouts across {self.threads} cores with {num_rollouts_per_thread} rollouts each.')
+        self.threads = self.num_rollouts if self.num_rollouts < self.threads else self.threads
+        self._set_torch_threads(threads=1)  # 1 to ensure underlying threads only uses 1 thread to prevent hidden threading
+        num_rollouts_per_thread = int(self.num_rollouts / self.threads)
 
-            with Pool(int(self.threads), initargs=(RLock(),), initializer=tqdm.set_lock) as pool:
-                threads = [pool.apply_async(self._get_rollout_batch, args=(num_rollouts_per_thread, thread_id, iteration, vae, mdrnn))
-                           for thread_id in range(1, self.threads + 1)]
-                [thread.get() for thread in threads]
-                pool.close()
-        else:
-            print(f'{self.num_rollouts} rollouts on main thread...')
-            self._get_rollout_batch(num_rollouts_per_thread=self.num_rollouts, thread_id=0, iteration=iteration)
+        print(f'{self.num_rollouts} rollouts across {self.threads} cores with {num_rollouts_per_thread} rollouts each.')
+        with Pool(int(self.threads), initargs=(RLock(),), initializer=tqdm.set_lock) as pool:
+            threads = [pool.apply_async(self._get_rollout_batch, args=(num_rollouts_per_thread, thread_id, iteration, vae, mdrnn))
+                       for thread_id in range(1, self.threads + 1)]
+            [thread.get() for thread in threads]
+            pool.close()
 
         print(f'Done - {self.num_rollouts} rollouts saved in {self.data_dir}')
 
@@ -121,12 +109,12 @@ class IterativeTrainer:
         environment = gym.make("CarRacing-v0")
         agent_wrapper = AgentWrapper(self.planning_agent, self.config, vae, mdrnn)
         for rollout_number in range(1, num_rollouts_per_thread + 1):
-            actions, states, rewards, terminals = self._planning_rollout(agent_wrapper, environment, thread_id, rollout_number, num_rollouts_per_thread, iteration)
+            actions, states, rewards, terminals = self._create_rollout(agent_wrapper, environment, thread_id, rollout_number, num_rollouts_per_thread, iteration)
             self._save_rollout(thread_id, rollout_number, actions, states, rewards, terminals)
         environment.close()
 
     def _test_planning(self, iteration, iteration_results, test_threads):
-        if len(test_threads) > 3 or not self.is_parallel:
+        if len(test_threads) > 3 or self.threads == 1:  # Prevent spawning too many test threads
             [p.join() for p in test_threads]
         p = Process(target=self._test_thread, args=[iteration, iteration_results])
         p.start()
@@ -134,11 +122,12 @@ class IterativeTrainer:
 
     # Needed since multi threading does not work with shared GPU/CPU for model
     def _train_mdrnn(self, iteration, iteration_results):
-        torch.set_num_threads(multiprocessing.cpu_count())
-        os.environ['OMP_NUM_THREADS'] = str(multiprocessing.cpu_count())
+        start = time.time()
+        self._set_torch_threads(threads=multiprocessing.cpu_count())
         p = Process(target=self._train_thread, args=[iteration, iteration_results])
         p.start()
         p.join()
+        print(f"TOTAL TRAINING TIME: {round(time.time() - start, 1)} seconds")
 
     def _train_thread(self, iteration, iteration_results):
         vae, mdrnn = self._get_vae_mdrnn()
@@ -148,14 +137,14 @@ class IterativeTrainer:
         iteration_result.mdrnn_test_loss = test_loss
         iteration_results[iteration] = iteration_result
 
-
     def _test_thread(self, iteration, iteration_results):
         print(f'Running test for iteration: {iteration}')
         preprocessor = Preprocessor(self.config['preprocessor'])
         vae, mdrnn = self._get_vae_mdrnn()
         environment = EnvironmentWrapper(self.config)  # Set environment
-        tester = PlanningTester(self.config, vae, mdrnn, preprocessor, environment, self.planning_agent)
+        tester = get_planning_tester(self.config, vae, mdrnn, preprocessor, environment, self.planning_agent)
         test_name, trials_actions, trials_rewards, trials_elites, trial_max_rewards, seed = tester.run_specific_test(self.test_scenario)
+        environment.close()
 
         iteration_result = iteration_results[iteration]
         iteration_result.test_name = test_name
@@ -163,8 +152,6 @@ class IterativeTrainer:
         iteration_result.total_trials = len(trial_max_rewards)
         iteration_result.trials_rewards = trials_rewards
         iteration_result.trials_max_rewards = trial_max_rewards
-        iteration_result.trials_actions = trials_actions
-        iteration_result.trials_elites = trials_elites
         iteration_results[iteration] = iteration_result
         self._save_iteration_stats(iteration_results)
         print(f'Test for iteration: {iteration} completed')
@@ -174,7 +161,7 @@ class IterativeTrainer:
         vae_trainer = VaeTrainer(self.config, preprocesser=None, logger=None)
         vae = vae_trainer.reload_model(VAE(self.config), device='cpu')
         vae.cpu()
-        mdrnn = MDRNN(num_actions=3,
+        mdrnn = MDRNN(num_actions=get_action_sampler(self.config).num_actions,
                       latent_size=self.config['latent_size'],
                       num_gaussians=self.config['mdrnn']['num_gaussians'],
                       num_hidden_units=self.config['mdrnn']['hidden_units'])
@@ -182,8 +169,8 @@ class IterativeTrainer:
         mdrnn.cpu()
         return vae, mdrnn
 
-    def _planning_rollout(self, agent_wrapper, environment, thread_id, rollout_number, num_rollouts_per_thread, iteration):
-        state, environment, _ = self._reset(environment, agent_wrapper)
+    def _create_rollout(self, agent_wrapper, environment, thread_id, rollout_number, num_rollouts_per_thread, iteration):
+        state, environment = self._reset(environment, agent_wrapper)
         actions, states, rewards, terminals = [], [], [], []
         progress_description = f"Data generation at iteration {iteration} | thread: {thread_id} | rollout: {rollout_number}/{num_rollouts_per_thread}"
         for _ in tqdm(range(self.sequence_length+1), desc=progress_description, position=thread_id-1):
@@ -210,10 +197,9 @@ class IterativeTrainer:
         environment.seed(seed)
         agent_wrapper.reset()
         environment.reset()
-        last_observation = [environment.env.step([0, 0, 0])[0] for _ in range(50)][-1]
-        random_car_position = np.random.randint(len(environment.env.track))
-        environment.car = Car(environment.world, *environment.track[random_car_position][1:4])
-        return last_observation, environment, random_car_position
+
+        if self.config['game'] == 'CarRacing-v0':  # TODO Generalize
+            return self.reset_car(environment)
 
     def _save_iteration_stats(self, iteration_results):
         stats_filename = f'iterative_stats_{self.config["experiment_name"]}'
@@ -245,4 +231,13 @@ class IterativeTrainer:
         fixed_cores = self.config["iterative_trainer"]["fixed_cpu_cores"]
         return fixed_cores if fixed_cores else multiprocessing.cpu_count()
 
+    def _set_torch_threads(self, threads):
+        torch.set_num_threads(threads)
+        os.environ['OMP_NUM_THREADS'] = str(threads)
 
+    # TODO Extract
+    def reset_car(self, environment):
+        last_observation = [environment.env.step([0, 0, 0])[0] for _ in range(50)][-1]
+        random_car_position = np.random.randint(len(environment.env.track))
+        environment.car = Car(environment.world, *environment.track[random_car_position][1:4])
+        return last_observation, environment

@@ -63,11 +63,16 @@ class MDRNNTrainer:
         self.backup_dir = join(self.model_dir, f"checkpoints/backups")
         self.best_mdrnn_filename = self.config['experiment_name'] + '_' + self.config["mdrnn_trainer"]["mdrnn_best_filename"]
         self.checkpoint_filename = self.config['experiment_name'] + '_' + self.config["mdrnn_trainer"]["mdrnn_checkpoint_filename"]
+        self.is_use_specific_test_data = self.config['is_use_specific_test_data']
+
         if not exists(self.backup_dir):
             mkdir(self.backup_dir)
 
         if not exists(self.model_dir):
             mkdir(self.model_dir)
+
+        if self.is_use_specific_test_data and not exists(self.test_data_dir):
+            raise Exception(f'use of specific test data was enabled but no folder "{self.test_data_dir}" was found')
 
         self.latent_size = self.config["latent_size"]
         self.batch_size = self.config["mdrnn_trainer"]["batch_size"]
@@ -125,7 +130,6 @@ class MDRNNTrainer:
         self.logger.end_log_training('mdrnn')
         return self.mdrnn, test_loss
 
-
     def reload_model(self, mdrnn, device = None):
         reload_file = join(self.model_dir, f'checkpoints/{self.best_mdrnn_filename}')
         if self.is_iterative:
@@ -174,27 +178,34 @@ class MDRNNTrainer:
         return 1, None  # start epoch
 
     def _load_data(self):  # To avoid loading data when not training
-        train_dataset = RolloutSequenceDataset(root=self.data_dir,
-                                               seq_len=self.sequence_length,
-                                               transform=transform,
-                                               is_train=True,
-                                               buffer_size=self.config['mdrnn_trainer']['train_buffer_size'],
-                                               file_ratio=self.config['mdrnn_trainer']['train_files_ratio'])
+        train_dataset = self._create_dataset(data_location=self.data_dir,
+                                             buffer_size=self.config['mdrnn_trainer']['train_buffer_size'],
+                                             file_ratio=self.config['mdrnn_trainer']['train_test_files_ratio'],
+                                             is_train=True)
+
         self.train_loader = DataLoader(dataset=train_dataset,
                                        batch_size=self.config['mdrnn_trainer']['batch_size'],
                                        num_workers=self.num_workers, shuffle=True)
 
-        test_directory = self.test_data_dir if self.config['is_pretrained_agent_rollouts_for_testing'] else self.data_dir
-        test_dataset = RolloutSequenceDataset(root=test_directory,
-                                              seq_len=self.sequence_length,
-                                              transform=transform,
-                                              is_train=False,
-                                              buffer_size=self.config['mdrnn_trainer']['test_buffer_size'],
-                                              file_ratio=self.config['mdrnn_trainer']['train_files_ratio'])
+        test_dataset = self._create_dataset(data_location=self.test_data_dir if self.is_use_specific_test_data else self.data_dir,
+                                            buffer_size=self.config['mdrnn_trainer']['test_buffer_size'],
+                                            file_ratio=self.config['mdrnn_trainer']['train_test_files_ratio'],
+                                            is_train=False)
 
         self.test_loader = DataLoader(dataset=test_dataset,
                                       batch_size=self.config['mdrnn_trainer']['batch_size'],
                                       num_workers=self.num_workers, shuffle=False)
+
+    def _create_dataset(self, data_location, buffer_size, file_ratio, is_train):
+        dataset = RolloutSequenceDataset(root=data_location,
+                                      seq_len=self.sequence_length,
+                                      transform=transform,
+                                      is_train=is_train,
+                                      buffer_size=buffer_size,
+                                      file_ratio=file_ratio)
+        if len(dataset._files) == 0:
+            raise Exception(f'No files found in {data_location}')
+        return dataset
 
     def _to_latent(self, obs, next_obs):
         """ Transform observations to latent space.  """
@@ -250,10 +261,10 @@ class MDRNNTrainer:
         for i, data in enumerate(loader):
             obs, action, reward, terminal, next_obs = [arr.to(self.device) for arr in data]
 
-            if obs.shape[0] is not self.batch_size:  # TODO remove this edge case code
+            if obs.shape[0] is not self.batch_size:  # TODO figure why bad data and remove this edge case code
                 print('Skipped bad data')
                 progress_bar.update(self.batch_size)
-                continue  # Skip bad data from corner
+                continue
 
             # transform obs to latent states
             latent_obs, latent_next_obs = self._to_latent(obs, next_obs)

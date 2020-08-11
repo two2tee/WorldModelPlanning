@@ -10,7 +10,7 @@ import torch.nn.functional as F
 
 
 class LSTM(nn.Module):
-    def __init__(self, num_actions=3, latent_size=32, num_hidden_units=256):
+    def __init__(self, num_actions, latent_size=32, num_hidden_units=256):
         super(LSTM, self).__init__()
         self.input_size = latent_size + num_actions
         self.lstm = nn.LSTM(input_size=self.input_size, hidden_size=num_hidden_units)

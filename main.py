@@ -12,7 +12,8 @@ from colorama import init as colorama_init
 from utility.preprocessor import Preprocessor
 from mdrnn.iterative_trainer import IterativeTrainer
 from tuning.ntbea_wrapper import PlanningNTBEAWrapper
-from tests.test_suite import ModelTester, PlanningTester
+from utility.rollout_generator_factory import get_rollout_generator
+from tests.test_suite_factory import get_model_tester, get_planning_tester
 from utility.tensorboard_handler import TensorboardHandler
 from environment.real_environment import EnvironmentWrapper
 from mdrnn.mdrnn_trainer import MDRNNTrainer as MDRNNTrainer
@@ -27,33 +28,57 @@ class Main:
         self.config = config
         self.frame_preprocessor = Preprocessor(self.config['preprocessor'])
         self.logger = TensorboardHandler(is_logging=True)
-        self.vae_trainer = VaeTrainer(self.config, self.frame_preprocessor, self.logger)
         self.mdrnn_trainer = MDRNNTrainer(self.config, self.frame_preprocessor, self.logger)
+        self.environment = EnvironmentWrapper(config)  # Set environment
+
 
     def generate_data(self):
-        from utility.datahandler import DataHandler
-        data_handler = DataHandler(self.config)
-        data_handler.generate_rollouts(self.config['game'])
+        data_handler = get_rollout_generator(self.config)
+        data_handler.generate_rollouts()
 
-    def train_or_reload_models(self):
-        vae = self.vae_trainer.train(VAE(self.config)) if config["is_train_vae"] else self.vae_trainer.reload_model(VAE(self.config))
+    def train_or_reload_vae(self):
+        vae_trainer = VaeTrainer(self.config, self.frame_preprocessor, self.logger)
+        vae = VAE(self.config)
+        return vae_trainer.train(vae) if config["is_train_vae"] else vae_trainer.reload_model(vae)
 
-        mdrnn = MDRNN(num_actions=3,
+    def train_or_reload_mdrnn(self):
+        mdrnn = MDRNN(num_actions=self.environment.action_sampler.num_actions,
                       latent_size=self.config['latent_size'],
                       num_gaussians=self.config['mdrnn']['num_gaussians'],
                       num_hidden_units=self.config['mdrnn']['hidden_units'])
 
         if config["is_iterative_train_mdrnn"]:
-            mdrnn = self.mdrnn_trainer.reload_model(mdrnn)
-            planning_agent = main.get_planning_agent(config['planning']['planning_agent'])
-            iterative_trainer = IterativeTrainer(config, planning_agent, main.mdrnn_trainer)
-            iterative_trainer.train()
+            return self._iterative_mdrnn_training(mdrnn)
         elif self.config["is_train_mdrnn"]:
-            mdrnn, _ = self.mdrnn_trainer.train(vae, mdrnn)
+            return self._standard_mdrnn_training(mdrnn)
         else:
-            mdrnn = self.mdrnn_trainer.reload_model(mdrnn)
+            return self.mdrnn_trainer.reload_model(mdrnn)
 
-        return vae, mdrnn
+    def _standard_mdrnn_training(self, mdrnn):
+        trained_mdrnn, _ = self.mdrnn_trainer.train(vae, mdrnn)
+        return trained_mdrnn
+
+    def _iterative_mdrnn_training(self, mdrnn):
+        planning_agent = self.get_planning_agent(config['planning']['planning_agent'])
+        iterative_trainer = IterativeTrainer(config, planning_agent, main.mdrnn_trainer)
+        iterative_trainer.train()
+        self.mdrnn_trainer.reload_model(mdrnn)
+        return
+
+    def run_ntbea_tuning(self, vae, mdrnn):
+        agent = self.get_planning_agent(self.config['planning']['planning_agent'])
+        planning_tester = get_model_tester(self.config, vae, mdrnn, self.frame_preprocessor, self.environment, agent)
+        ntbea_tuner = PlanningNTBEAWrapper(self.config, planning_tester)
+        ntbea_tuner.run_ntbea()
+
+    def run_model_tests(self, vae, mdrnn):
+        model_tester = get_model_tester(self.config, vae, mdrnn, self.frame_preprocessor, self.environment)
+        model_tester.run_tests()
+
+    def run_planning_tests(self, vae, mdrnn):
+        agent = self.get_planning_agent(config['planning']['planning_agent'])
+        planning_tester = get_planning_tester(self.config, vae, mdrnn, self.frame_preprocessor, self.environment, agent)
+        planning_tester.run_tests()
 
     def get_planning_agent(self, planning_agent):
         simulated_agents = {"RHEA": RHEA_simulation(*config['planning']['rolling_horizon'].values()),
@@ -62,6 +87,17 @@ class Main:
 
         return simulated_agents[planning_agent]
 
+    def play_game(self, vae, mdrnn):
+        print('---- START PLAYING ----')
+        agent = self.get_planning_agent(config['planning']['planning_agent'])
+        game_controller = SimulatedPlanningController(config, main.frame_preprocessor, vae, mdrnn)
+        num_games, average_steps, average_reward = 10, 0, 0
+        for i in range(num_games):
+            total_steps, total_reward, total_simulated_reward = game_controller.play_game(agent, self.environment)
+            average_steps += total_steps
+            average_reward += total_reward
+            print(f"Game: {i} | Total steps: {total_steps} | Total reward: {total_reward}")
+            print(f"Average steps: {average_steps / num_games} | Average reward: {average_reward / num_games}")
 
 # MAIN LOOP ###########################
 with open('config.json') as config_file:
@@ -73,37 +109,21 @@ if __name__ == '__main__':
     print(f'Session: {session_name}')
     main = Main(config)
 
-    environment = EnvironmentWrapper(config)  # Set environment
-
     if config["is_generate_data"]:
         main.generate_data()
 
-    vae, mdrnn = main.train_or_reload_models()  # Get models
+    vae = main.train_or_reload_vae()
+    mdrnn = main.train_or_reload_mdrnn()
 
-    if config['test_suite']["is_run_model_tests"]:  # Run model tests
-        model_tester = ModelTester(config, vae, mdrnn, main.frame_preprocessor, environment)
-        model_tester.run_tests()
+    if config['test_suite']["is_run_model_tests"]:
+        main.run_model_tests(vae, mdrnn)
 
     if config['is_ntbea_param_tune']:
-        agent = main.get_planning_agent(config['planning']['planning_agent'])
-        planning_tester = PlanningTester(config, vae, mdrnn, main.frame_preprocessor, environment, agent)
-        ntbea_tuner = PlanningNTBEAWrapper(config, planning_tester)
-        ntbea_tuner.run_ntbea()
+        main.run_ntbea_tuning(vae, mdrnn)
 
-    if config['test_suite']["is_run_planning_tests"]:  # Run planning tests
-        agent = main.get_planning_agent(config['planning']['planning_agent'])
-        planning_tester = PlanningTester(config, vae, mdrnn, main.frame_preprocessor, environment, agent)
-        planning_tester.run_tests()
+    if config['test_suite']["is_run_planning_tests"]:
+        main.run_planning_tests(vae, mdrnn)
 
-    if config["is_play"]:  # Play and plan
-        agent = main.get_planning_agent(config['planning']['planning_agent'])
-        print('---- START PLAYING ----')
-        game_controller = SimulatedPlanningController(config, main.frame_preprocessor, vae, mdrnn)
-        num_games, average_steps, average_reward = 10, 0, 0
-        for i in range(num_games):
-            total_steps, total_reward, total_simulated_reward = game_controller.play_game(agent, environment)
-            average_steps += total_steps
-            average_reward += total_reward
-            print(f"Game: {i} | Total steps: {total_steps} | Total reward: {total_reward}")
-            print(f"Average steps: {average_steps / num_games} | Average reward: {average_reward / num_games}")
+    if config["is_play"]:
+        main.play_game(vae, mdrnn)
 

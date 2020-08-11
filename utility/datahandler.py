@@ -15,9 +15,9 @@ import matplotlib.pyplot as plt
 from PIL import Image
 from multiprocessing import Pool
 from os.path import exists, join
-from .carracing.model import Model
+from utility.carracing.ha_implementation.model import Model
 from gym.envs.box2d.car_dynamics import Car
-
+from environment.actions.action_sampler_factory import get_action_sampler
 
 class DataHandler:
     def __init__(self, config):
@@ -25,7 +25,7 @@ class DataHandler:
         if not exists(self.data_dir):
             os.mkdir(self.data_dir)
         self.config = config
-        self.is_corners_only = config["data_generator"]['is_corners_only']
+        self.action_sampler = get_action_sampler(self.config)
         self.rollouts = config["data_generator"]['rollouts']
         self.sequence_length = config["data_generator"]['sequence_length']
         self.threads = multiprocessing.cpu_count()
@@ -224,11 +224,3 @@ class DataHandler:
                             rewards=np.array(reward_rollout),
                             actions=np.array(actions_rollout),
                             terminals=np.array(is_done_rollout))
-
-    def brownian_sample(self, previous_action, delta = 1. / 50):  # a_{t+1} = a_t + sqrt(dt) N(0, 1)
-        dactions_dt = np.random.randn(len(previous_action))
-        new_action = [0, 0, 0]
-        new_action[0] = np.clip(previous_action[0] + math.sqrt(delta) * dactions_dt[0], -1, 1)
-        new_action[1] = np.clip(previous_action[1] + math.sqrt(delta) * dactions_dt[1], 0, 1)
-        new_action[2] = np.clip(previous_action[2] + math.sqrt(delta) * dactions_dt[2], 0, 1)
-        return new_action

@@ -9,18 +9,17 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import random
-import math
+import environment.actions.action_sampler_factory as action_sampler
 from torch.distributions.categorical import Categorical
 matplotlib.use('Qt5Agg')  # Required for Python, Matplotlib 3 on Mac OSX
 
 
 class SimulatedEnvironment:
     def __init__(self, config, vae, mdrnn):
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.config = config
         self.mdrnn = mdrnn.cpu()
         self.vae = vae.cpu()
-        self.is_discretize_sampling = config['planning']['is_discretize_sampling']
+        self.action_sampler = action_sampler.get_action_sampler(config)
         self.temperature = config['simulated_environment']['temperature']
         self.is_render_reconstructions = config['visualization']['is_render_reconstructions']
 
@@ -37,24 +36,16 @@ class SimulatedEnvironment:
             self.figure_num = self.figure.number
             self.current_reconstruction = None
 
-        # sampling
-        self.steer_delta = self.config['simulated_environment']['steer_delta']
-        self.gas_delta = self.config['simulated_environment']['gas_delta']
-        self.max_gas = self.config['simulated_environment']['max_gas']
-        self.max_brake = self.config['simulated_environment']['max_brake']
-
     def step(self, action, hidden_state_h=None, latent_state_z=None, is_simulation_real_environment=True):
         hidden_state_h = self.current_hidden_states if hidden_state_h is None else hidden_state_h
         latent_state_z = self.current_latent_state_z if latent_state_z is None else latent_state_z
         next_latent_state_z, rewards, dones, next_hidden_states = self._step_mdrnn(action, latent_state_z, hidden_state_h)
 
         if is_simulation_real_environment:  # Keep track of latent and hidden states if hallucination is real environment
-            self.current_reconstruction = self._decode_latent_z(next_latent_state_z)  # Render
-            self.current_hidden_states = next_hidden_states
-            self.current_latent_state_z = next_latent_state_z
+            self._track_states(next_latent_state_z, next_hidden_states)
 
         # (z', r, d, h')
-        return next_latent_state_z.clone().detach(), rewards.item(), (dones > 0).item(), [next_hidden_states[0].clone().detach(), next_hidden_states[1].clone().detach()]
+        return self._extract_mdrnn_outputs(next_latent_state_z, rewards, dones, next_hidden_states)
 
     def reset(self):
         if self.is_render_reconstructions:
@@ -116,6 +107,18 @@ class SimulatedEnvironment:
                                                   self.config['preprocessor']['num_channels']),
                                       dtype=np.uint8))
 
+    def _track_states(self, next_latent_state_z, next_hidden_states):
+        self.current_reconstruction = self._decode_latent_z(next_latent_state_z)
+        self.current_hidden_states = next_hidden_states
+        self.current_latent_state_z = next_latent_state_z
+
+    def _extract_mdrnn_outputs(self, next_latent_state_z, rewards, dones, next_hidden_states):
+        next_z = next_latent_state_z.clone().detach()
+        reward = rewards.item()
+        is_done = (dones > 0).item()
+        next_h = [next_hidden_states[0].clone().detach(), next_hidden_states[1].clone().detach()]
+        return next_z, reward, is_done, next_h
+
     def render(self, reconstruction=None):
         if not self.monitor:
             self._reset_monitor()
@@ -125,57 +128,20 @@ class SimulatedEnvironment:
         self.monitor.set_data(reconstruction)
         plt.pause(.01)
 
-    def sample(self, previous_action=None):  # Sampling: [ steer, gas, brake ] = [ [-1, +1] , [0, 1], [0, 1] ]
-        return self._continous_sample(previous_action) if not self.is_discretize_sampling else self.discrete_sample()
-
     def get_hidden_zeros_state(self):
         return 2 * [torch.zeros(1, self.config['mdrnn']['hidden_units']).unsqueeze(0)]
 
-    def _continous_sample(self, previous_action=None):
-        steer = np.random.uniform(low=-1, high=1) if previous_action is None else \
-                np.random.choice([max(previous_action[0] - self.steer_delta, -1),
-                                  previous_action[0],
-                                  min(previous_action[0] + self.steer_delta, 1)])
-
-        gas = np.random.uniform(low=self.max_brake, high=self.max_gas) if previous_action is None else \
-              np.random.choice([max(previous_action[1] - self.gas_delta, -1),
-                                previous_action[1],
-                                min(previous_action[1] + self.gas_delta, 1)])
-
-        # Brake: negative sign of gas to avoid simultaneous brake/gas driving
-        gas = gas if gas > 0 else 0
-        brake = abs(gas) if gas < 0 else 0
-        return [steer, gas, brake]
+    def sample(self, previous_action=None):
+        return self.action_sampler.sample(previous_action)
 
     def discrete_sample(self):
-        steer_steps = [round(e, 1) for e in np.arange(start=-1.0, stop=1.0, step=0.1)]
-        gas_steps = [round(e, 1) for e in np.arange(start=-1.0, stop=1.0, step=0.2)]
-        steer, gas = np.random.choice(steer_steps), np.random.choice(gas_steps)
-        gas = gas if gas > 0 else 0
-        brake = abs(gas) if gas < 0 else 0
-        return [steer, gas, brake]
+        return self.action_sampler.discrete_sample()
 
-    def brownian_sample(self, previous_action, delta):  # a_{t+1} = a_t + sqrt(dt) N(0, 1)
-        dactions_dt = np.random.randn(len(previous_action))
-        new_action = [0, 0, 0]
-        new_action[0] = np.clip(previous_action[0] + math.sqrt(delta) * dactions_dt[0], -1, 1)
-        new_action[1] = np.clip(previous_action[1] + math.sqrt(delta) * dactions_dt[1], 0, 1)
-        new_action[2] = np.clip(previous_action[2] + math.sqrt(delta) * dactions_dt[2], 0, 1)
-        return new_action
+    def brownian_sample(self, previous_action):
+        return self.action_sampler.brownian_sample(previous_action)
 
     def discrete_action_space(self, action=None):
-        actions = set()
-        steer_steps = np.arange(start=-1.0, stop=1.0, step=self.steer_delta) if action is None else [max(action[0] - self.steer_delta, -1), action[0], min(action[0] + self.steer_delta, 1)]
-        gas_steps = np.arange(start=-1.0, stop=1.0, step=self.gas_delta) if action is None else [max(action[1] - self.gas_delta, -1), action[1], min(action[1] + self.gas_delta, 1)]
-        steer_steps, gas_steps = [round(e, 1) for e in steer_steps], [round(e, 1) for e in gas_steps]  # Remove decimal precision
-
-        for steer in steer_steps:
-            for gas in gas_steps:
-                actions.add((steer, gas, 0)) if gas > 0 else actions.add((steer, 0, abs(gas)))  # negative sign gas = brake
-
-        return [list(a) for a in actions]
+        return self.action_sampler.discrete_action_space(action)
 
     def discrete_delta_sample(self, previous_action=None):
-        actions = self.discrete_action_space(previous_action)
-        random_index = random.randrange(len(actions))
-        return actions[random_index]
+        return self.action_sampler.discrete_delta_sample(previous_action)

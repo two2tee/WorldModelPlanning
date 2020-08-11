@@ -9,8 +9,6 @@ class IterationResult:
         self.total_trials = 0
         self.trials_max_rewards = []
         self.trials_rewards = []
-        self.trials_actions = []
-        self.trials_elites = []
         self.mdrnn_test_loss = 0
 
     def get_average_reward(self):
