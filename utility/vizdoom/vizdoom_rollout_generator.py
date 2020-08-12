@@ -1,15 +1,13 @@
 from tqdm import tqdm
 from utility.base_rollout_generator import BaseRolloutGenerator
-from environment.environment_factory import get_environment
+
 
 
 class RolloutGenerator(BaseRolloutGenerator):
     def __init__(self, config, data_output_dir):
         super().__init__(config,  data_output_dir)
 
-    def _standard_rollout(self, thread, current_rollout, rollouts):
-        action = 0
-        environment = get_environment(self.config)
+    def _standard_rollout(self, environment, thread, current_rollout, rollouts):
         _ = environment.reset()
         actions_rollout, states_rollout, reward_rollout, is_done_rollout = [], [], [], []
 

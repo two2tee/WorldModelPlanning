@@ -8,7 +8,7 @@ from os.path import exists
 from iteration_stats.iteration_result import IterationResult
 
 
-filename = 'iteration_stats/iterative_stats_World_Model_B.pickle'
+filename = 'iteration_stats/iterative_stats_World_Model_D.pickle'
 if exists(filename):
     with open(f'{filename}', 'rb') as file:
         file_content = pickle.load(file)

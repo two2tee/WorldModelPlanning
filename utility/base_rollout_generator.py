@@ -6,6 +6,7 @@ from PIL import Image
 from os.path import exists, join
 from torch import multiprocessing
 from torch.multiprocessing import Pool
+from environment.environment_factory import get_environment
 from environment.actions.action_sampler_factory import get_action_sampler
 
 if platform.system() == "Darwin" or platform.system() == "Linux":
@@ -42,8 +43,9 @@ class BaseRolloutGenerator:
 
     def _run_rollout_thread(self, rollouts, thread):
         i = 1
+        environment = get_environment(self.config)
         while i < rollouts + 1:
-            actions_rollout, states_rollout, reward_rollout, is_done_rollout = self._standard_rollout(thread, i, rollouts)
+            actions_rollout, states_rollout, reward_rollout, is_done_rollout = self._standard_rollout(environment, thread, i, rollouts)
 
             if len(actions_rollout) < 128:  # ensure rollouts contains enough data for sequence
                 print(f'thread: {thread} - Bad rollout with {len(actions_rollout)} actions - retry...')
@@ -54,7 +56,7 @@ class BaseRolloutGenerator:
 
         return thread
 
-    def _standard_rollout(self, thread, current_rollout, rollouts):
+    def _standard_rollout(self, environment, thread, current_rollout, rollouts):
         return NotImplemented
 
     def _step(self, environment, obs, previous_action, model=None):

@@ -12,9 +12,8 @@ class RolloutGenerator(BaseRolloutGenerator):
     def __init__(self, config, data_output_dir):
         super().__init__(config,  data_output_dir)
 
-    def _standard_rollout(self, thread, current_rollout, rollouts):
+    def _standard_rollout(self, environment, thread, current_rollout, rollouts):
         action = [0, 0, 0]
-        environment = gym.make("CarRacing-v0")
         model = self._get_model() if self.config["data_generator"]['car_racing']["is_ha_agent_driver"] else None
         obs, _ = self._reset(environment)
         actions_rollout, states_rollout, reward_rollout, is_done_rollout = [], [], [], []
@@ -23,7 +22,7 @@ class RolloutGenerator(BaseRolloutGenerator):
         for _ in tqdm(range(self.sequence_length + 1), desc=progress_description, position=thread - 1):
             obs, reward, done, info, action = self._step(environment, obs, action, model)
             obs = self._compress_frame(obs, is_resize=True)
-            environment.viewer.window.dispatch_events()
+            environment.environment.viewer.window.dispatch_events()
             actions_rollout.append(action)
             states_rollout.append(obs)
             reward_rollout.append(reward)
@@ -35,17 +34,15 @@ class RolloutGenerator(BaseRolloutGenerator):
 
     def _reset(self, environment):
         # Generate random tracks and initial car positions
-        seed = random.randint(0, 2 ** 31 - 1)
-        environment.env.seed(seed)
         environment.reset()
-        obs = [environment.step([0, 0, 0])[0] for _ in range(50)][-1]
 
         # Worse total reward by randomizing car position
         car_position = np.random.randint(len(environment.track))
-        environment.car = Car(environment.world, *environment.track[car_position][1:4])
+        environment.environment.car = Car(environment.environment.world, *environment.environment.track[car_position][1:4])
 
         # Garbage collection of events in viewer
-        environment.env.viewer.window.dispatch_events()
+        obs, _, _, _ = environment.step([0,0,0])
+        environment.environment.viewer.window.dispatch_events()
         return obs, car_position
 
     def _step(self, environment, obs, previous_action, model=None):

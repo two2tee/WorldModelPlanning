@@ -1,0 +1,34 @@
+Set experiment name
+Set Forced VAE 
+
+Check latent size - 64
+Check MDRNN file ratio - 0.80
+
+## FROM SCRATCH
+Check is_generate data  - True
+Check is_train_vae  - True
+Check is_train_mdrnn - True
+Check rollout numbers in data generator - 10000
+Check sequence length in data generator - 1000
+Check VAE and MDRNN epoch - 20
+Check MDRNN Seq len - 500
+
+## Iterative Training
+Check is_generate data  - False
+Check is_train_vae  - False
+Check is_train_mdrnn - False
+Check is_iterative_train_mdrnn - True
+Check MDRNN Seq len
+Check Rollouts
+Check Iterations
+Check Max epoch
+Check fixed cores - null
+Check test_scenario : planning_whole_random_track for car racing and "" for vizdoom
+
+
+## Planning Agent
+Check planning agent is either RMHC or RHEA
+Check population
+Check Horizon
+Check Generation
+Check SB is off
