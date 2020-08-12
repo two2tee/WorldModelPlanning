@@ -10,19 +10,43 @@ from utility.visualizer import Visualizer
 from environment.simulated_environment import SimulatedEnvironment
 
 
+
+
 class SimulatedPlanningController:
     def __init__(self, config, preprocessor, vae, mdrnn):
         self.config = config
         self.preprocessor = preprocessor
-        self.action = np.array([0., 0., 0.])
+        self.action = self._get_action_placeholder()
         self.vae = vae
         self.mdrnn = mdrnn
         self.simulated_environment = SimulatedEnvironment(self.config, self.vae, self.mdrnn)
         self.visualizer = Visualizer()
         self.is_dream_play = config['is_dream_play']
 
+    def _get_action_placeholder(self):
+        if self.config['game'] == 'CarRacing-v0':
+            return np.array([0., 0., 0.])
+        if self.config['game'] == 'viz-doom':
+            return [-1]
+        raise Exception(f'No implementation of game controller was found for game: {self.config["game"]}')
+
+
+    def _get_on_key_press(self, event):
+        if self.config['game'] == 'CarRacing-v0':
+            return self._on_key_press_car(event)
+        if self.config['game'] == 'viz-doom':
+            return self._on_key_press_viz(event)
+        raise Exception(f'No implementation of game controller was found for game: {self.config["game"]}')
+
+    def _get_on_key_release(self, event):
+        if self.config['game'] == 'CarRacing-v0':
+            return self._on_key_release_car(event)
+        if self.config['game'] == 'viz-doom':
+            return self._on_key_release_viz(event)
+        raise Exception(f'No implementation of game controller was found for game: {self.config["game"]}')
+
     # Manual controls
-    def on_key_press(self, event):
+    def _on_key_press_car(self, event):
         """ Defines key pressed behavior """
         if event.key == 'up':
             self.action[1] = 1
@@ -33,7 +57,13 @@ class SimulatedPlanningController:
         if event.key == 'right':
             self.action[0] = 1
 
-    def on_key_release(self, event):
+    def _on_key_press_viz(self, event):
+        if event.key == 'left':
+            self.action = [0]
+        if event.key == 'right':
+            self.action = [1]
+
+    def _on_key_release_car(self, event):
         """ Defines key pressed behavior """
         if event.key == 'up':
             self.action[1] = 0
@@ -43,6 +73,10 @@ class SimulatedPlanningController:
             self.action[0] = 0
         if event.key == 'right' and self.action[0] == 1:
             self.action[0] = 0
+
+    def _on_key_release_viz(self, event):
+        if event.key == 'left' or event.key == 'right':
+            self.action = self._get_action_placeholder()
 
     def _encode_state(self, state):
         state = self.preprocessor.resize_frame(state).unsqueeze(0)
@@ -58,8 +92,8 @@ class SimulatedPlanningController:
     def play_game(self, agent, environment):
         with torch.no_grad():
             self.simulated_environment.reset()
-            self.simulated_environment.figure.canvas.mpl_connect('key_press_event', lambda event: self.on_key_press(event))
-            self.simulated_environment.figure.canvas.mpl_connect('key_release_event', lambda event: self.on_key_release(event))
+            self.simulated_environment.figure.canvas.mpl_connect('key_press_event', lambda event: self._get_on_key_press(event))
+            self.simulated_environment.figure.canvas.mpl_connect('key_release_event', lambda event: self._get_on_key_release(event))
 
             is_done = False
             total_steps, total_reward, total_simulated_reward = 0, 0, 0

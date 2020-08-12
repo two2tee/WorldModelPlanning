@@ -3,10 +3,10 @@ import random
 
 class VizdoomActionSampler(BaseActionSampler):
     def __init__(self, config):
-        super().__init__(config, num_actions=2)
+        super().__init__(config, num_actions=1)
 
     def sample(self, previous_action=None):
-        return random.randint(0,1)
+        return [random.randint(-1, 0, 1)]
 
     def brownian_sample(self, previous_action):
         return self.sample()
@@ -15,4 +15,4 @@ class VizdoomActionSampler(BaseActionSampler):
         return self.sample()
 
     def discrete_action_space(self, action=None):
-        return [0, 1]
+        return [-1, 0, 1]

@@ -6,5 +6,5 @@ matplotlib
 tensorboard
 torchvision
 dill
-vizdoom
 colorama
+vizdoom - https://github.com/mwydmuch/ViZDoom/blob/master/doc/Building.md

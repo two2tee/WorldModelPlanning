@@ -10,8 +10,10 @@ class VizdoomEnvironment(BaseEnvironment):
         return self.environment.reset()
 
     def step(self, action):
-        obs, reward, done, info = self.environment.step(action)
+        obs, reward, done, info = self.environment.step(self._convert_action(action))
         reward = -1 if done else reward
         return obs, reward, done, info
 
+    def _convert_action(self, action):
+        return action[0] if action[0] != -1 else None
 

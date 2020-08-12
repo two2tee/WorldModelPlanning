@@ -72,7 +72,7 @@ class BaseRolloutGenerator:
         print(f"Thread {thread} - End of rollout {rollout_number}, {len(states_rollout)} frames.")
         print(self.data_dir, f'{self.config["game"]}_thread_{thread}_rollout_{rollout_number}')
         np.savez_compressed(file=join(self.data_dir,
-                                      f'{self.config["data_generator"]["data_prefix"]}thread_{thread}_resized_rollout_{rollout_number}'),
+                                      f'{self.config["game"]}{self.config["data_generator"]["data_prefix"]}thread_{thread}_rollout_{rollout_number}'),
                             observations=np.array(states_rollout),
                             rewards=np.array(reward_rollout),
                             actions=np.array(actions_rollout),
