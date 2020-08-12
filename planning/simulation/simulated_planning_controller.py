@@ -97,12 +97,7 @@ class SimulatedPlanningController:
 
             is_done = False
             total_steps, total_reward, total_simulated_reward = 0, 0, 0
-
             current_state = environment.reset()
-            for _ in range(50):  # Skip zoom
-                current_state, _, _, _ = environment.step(self.action)
-            environment.render()
-
             latent_state, simulated_reward, hidden_state = self._synchronize_simulated_environment(current_state, self.action)
 
             while not is_done:
@@ -120,6 +115,7 @@ class SimulatedPlanningController:
                 else:
                     current_state, reward, is_done, _ = environment.step(self.action)
                     latent_state, simulated_reward, hidden_state = self._synchronize_simulated_environment(current_state, self.action, hidden_state)
+                    print(reward)
                     total_reward += reward
                     total_simulated_reward += simulated_reward
                     environment.render()

@@ -6,7 +6,7 @@ class VizdoomActionSampler(BaseActionSampler):
         super().__init__(config, num_actions=1)
 
     def sample(self, previous_action=None):
-        return [random.randint(-1, 0, 1)]
+        return [random.randint(-1, 1)]
 
     def brownian_sample(self, previous_action):
         return self.sample()
