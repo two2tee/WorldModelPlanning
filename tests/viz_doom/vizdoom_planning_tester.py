@@ -27,7 +27,6 @@ class VizDoomPlanningTester(BasePlanningTester):
     def _random_takecover(self, args):
         args[TEST_NAME] = '----- Forward planning test ------'
         return self._run_plan_or_replay(args=args)
-
     ##
 
     def _run_plan_or_replay(self, args):
