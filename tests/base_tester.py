@@ -19,3 +19,6 @@ class BaseTester:
         decoded_state, z_mean, z_log_standard_deviation = self.vae(state)
         latent_state = self.vae.sample_reparametarization(z_mean, z_log_standard_deviation)
         return latent_state, decoded_state
+
+    def run_tests(self):
+        return NotImplemented

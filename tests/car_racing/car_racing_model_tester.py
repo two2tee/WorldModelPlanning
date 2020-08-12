@@ -6,6 +6,7 @@ from tests.base_tester import BaseTester
 from gym.envs.box2d.car_dynamics import Car
 from environment.simulated_environment import SimulatedEnvironment
 
+
 class ModelTester(BaseTester):
     def __init__(self, config, vae, mdrnn, preprocessor, environment):
         super().__init__(config, vae, mdrnn, preprocessor, environment, trials=config["test_suite"]["trials"])
@@ -112,12 +113,6 @@ class ModelTester(BaseTester):
                                                                                                             init_state)
             self._print_results(total_reward_real, total_full_sim_reward, total_partial_reward_sim, avg_recon_diff)
 
-    def _reconstruct(self, state):
-        state = self.preprocessor.resize_frame(state).unsqueeze(0)
-        reconstruction, z_mean, z_log_standard_deviation = self.vae(state)
-        latent_state = self.vae.sample_reparametarization(z_mean, z_log_standard_deviation)
-        return reconstruction, latent_state
-
     def _step(self, actions, current_state):
         hidden_state = self.simulated_environment.get_hidden_zeros_state()
         total_reward_real = 0
@@ -129,7 +124,7 @@ class ModelTester(BaseTester):
             total_full_sim_reward += self._step_sequence_in_dream(actions, current_state, hidden_state)
             for _ in range(repetition):
                 current_state, real_reward, _, _ = self.environment.step(action)
-                vae_reconstruction, latent_state = self._reconstruct(current_state)
+                latent_state, vae_reconstruction = self._encode_state(current_state)
                 latent_state, simulated_reward, simulated_is_done, hidden_state = self.simulated_environment.step(
                     action, hidden_state, latent_state,
                     is_simulation_real_environment=True)
