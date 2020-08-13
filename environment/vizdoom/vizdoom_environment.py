@@ -21,13 +21,15 @@ class VizdoomEnvironment(BaseEnvironment):
         frame = states[0]
         new_health = states[1]
 
-        reward = -1.0 if done or self._is_health_drop(new_health) else reward
+        reward = -1.0 if self._is_health_drop(new_health) else reward
         self.health = new_health if self._is_health_drop(new_health) else self.health
 
         return frame, reward, done, info
 
     def _convert_action(self, action):
-        return action[0] if action[0] != -1 else None
+        action_value = action[0] - 1  # since we padded the value with zeros in data loader to maintain same seq length
+        return action_value if action_value != -1 else None # -1 = no operations
+
 
     def _is_health_drop(self, new_health):
         return new_health != self.health

@@ -34,10 +34,22 @@ class TensorboardHandler:
         self.writer = SummaryWriter(f'{self.log_dir_root}/{name}')
         self.start_time = time.time()
 
-    def log_loss(self, name, loss, epoch, is_train):
+    def log_average_loss(self, name, loss, epoch, is_train):
         if not self.is_logging:
             return
-        title = f"{name} - Loss/train" if is_train else f"{name} - Loss/test"
+        title = f"{name} - Average Loss/{'train' if is_train else 'test'}"
+        self.writer.add_scalar(title, loss, epoch)
+
+    def log_reward_loss(self, name, loss, epoch, is_train):
+        title = f"{name} - Reward Loss/{'train' if is_train else 'test'}"
+        self.writer.add_scalar(title, loss, epoch)
+
+    def log_terminal_loss(self, name, loss, epoch, is_train):
+        title = f"{name} - Terminals Loss/{'train' if is_train else 'test'}"
+        self.writer.add_scalar(title, loss, epoch)
+
+    def log_next_latent_loss(self, name, loss, epoch, is_train):
+        title = f"{name} - next latent Loss/{'train' if is_train else 'test'}"
         self.writer.add_scalar(title, loss, epoch)
 
     def log_vae_reconstruction(self, images, epoch):

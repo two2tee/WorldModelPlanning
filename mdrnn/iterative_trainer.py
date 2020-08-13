@@ -131,10 +131,10 @@ class IterativeTrainer:
 
     def _train_thread(self, iteration, iteration_results):
         vae, mdrnn = self._get_vae_mdrnn()
-        _, test_loss = self.mdrnn_trainer.train(vae, mdrnn, data_dir=self.data_dir, max_epochs=self.max_epochs,
+        _, test_losses = self.mdrnn_trainer.train(vae, mdrnn, data_dir=self.data_dir, max_epochs=self.max_epochs,
                                                 seq_len=self.sequence_length, iteration=iteration)
         iteration_result = iteration_results[iteration]
-        iteration_result.mdrnn_test_loss = test_loss
+        iteration_result.mdrnn_test_losses = test_losses
         iteration_results[iteration] = iteration_result
 
     def _test_thread(self, iteration, iteration_results):

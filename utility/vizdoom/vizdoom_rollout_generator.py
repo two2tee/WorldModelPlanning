@@ -1,3 +1,4 @@
+import numpy as np
 from tqdm import tqdm
 from utility.base_rollout_generator import BaseRolloutGenerator
 
@@ -12,8 +13,13 @@ class RolloutGenerator(BaseRolloutGenerator):
         actions_rollout, states_rollout, reward_rollout, is_done_rollout = [], [], [], []
 
         progress_description = f"Data generation for {self.config['game']} | thread: {thread} | rollout: {current_rollout}/{rollouts}"
-        for _ in tqdm(range(self.sequence_length + 1), desc=progress_description, position=thread - 1):
-            action = environment.sample()
+
+        repeat = np.random.randint(1, 11)  # repeats to avoid redundant actions and promote diversity
+        action = -1
+        for i in tqdm(range(self.sequence_length + 1), desc=progress_description, position=thread - 1):
+            if i % repeat == 0:
+                action = environment.sample()
+                repeat = np.random.randint(1, 11)
             obs, reward, done, info = environment.step(action)
             obs = self._compress_frame(obs, is_resize=True)
             # self._render(environment, obs, action, reward, done)
@@ -23,7 +29,7 @@ class RolloutGenerator(BaseRolloutGenerator):
             reward_rollout.append(reward)
             is_done_rollout.append(done)
             if done:
-                environment.reset()
+                break
         environment.close()
         return actions_rollout, states_rollout, reward_rollout, is_done_rollout
 
@@ -31,6 +37,6 @@ class RolloutGenerator(BaseRolloutGenerator):
     def _render(self, environment, obs, action, reward, done):
         import matplotlib.pyplot as plt
         environment.render()
-        plt.imshow(obs)
-        plt.pause(0.001)
+        # plt.imshow(obs)
+        # plt.pause(0.001)
         print(action, reward, done)

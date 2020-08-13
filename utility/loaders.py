@@ -47,8 +47,7 @@ class _RolloutDataset(torch.utils.data.Dataset):
         for f in self._buffer_fnames:
             with np.load(f) as data:
                 self._buffer += [{k: np.copy(v) for k, v in data.items()}]
-                self._cum_size += [self._cum_size[-1] +
-                                   self._data_per_sequence(data['rewards'].shape[0])]
+                self._cum_size += [self._cum_size[-1] + self._data_per_sequence(data['rewards'].shape[0])]
 
             pbar.update(1)
         pbar.close()
@@ -114,6 +113,7 @@ class RolloutSequenceDataset(_RolloutDataset):
         return obs, action, reward, terminal, next_obs  # data_random_car format
 
     def _data_per_sequence(self, data_length):
+        # return data_length
         if data_length < self._seq_len:
             raise Exception(f'Sequence length in data is {data_length} which less than stated sequence length of {self._seq_len}')
         return data_length - self._seq_len

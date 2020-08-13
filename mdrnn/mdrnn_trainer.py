@@ -98,8 +98,8 @@ class MDRNNTrainer:
         self._load_data()
         self.logger.start_log_training_minimal(name=f'{self.session_name}'+f'_iteration_{iteration}' if self.is_iterative else '')
         self.optimizer = optim.Adam(self.mdrnn.parameters(), lr=self.config['mdrnn_trainer']['learning_rate'])
-        self.scheduler = ReduceLROnPlateau(self.optimizer, 'min', factor=0.5, patience=5)  # TODO config
-        self.earlystopping = EarlyStopping('min', patience=30)  # TODO config
+        self.scheduler = ReduceLROnPlateau(self.optimizer, 'min', factor=0.5, patience=5)
+        self.earlystopping = EarlyStopping('min', patience=30)
         train = partial(self._data_pass, is_train=True, include_reward=True)
         test = partial(self._data_pass, is_train=False, include_reward=True)
 
@@ -109,18 +109,18 @@ class MDRNNTrainer:
         if start_epoch > max_epochs:
             raise Exception(f'Inconsistent start epoch {start_epoch} and max_epoch {max_epochs}')
 
-        test_loss = 0
+        test_losses = {}
         for epoch in range(start_epoch, max_epochs + 1):
             train(epoch)
-            test_loss = test(epoch)
-            self.scheduler.step(test_loss)
-            self.earlystopping.step(test_loss)
+            test_losses = test(epoch)
+            self.scheduler.step(test_losses['average_loss'])
+            self.earlystopping.step(test_losses['average_loss'])
 
-            is_best = not current_best or test_loss < current_best
-            current_best = test_loss if is_best else current_best
+            is_best = not current_best or test_losses['average_loss'] < current_best
+            current_best = test_losses['average_loss'] if is_best else current_best
 
             self._save_checkpoint({'epoch': epoch, 'state_dict': self.mdrnn.state_dict(),
-                                   'precision': test_loss, 'optimizer': self.optimizer.state_dict(),
+                                   'precision': test_losses['average_loss'], 'optimizer': self.optimizer.state_dict(),
                                    'scheduler': self.scheduler.state_dict(),
                                    'earlystopping': self.earlystopping.state_dict()
                                    }, is_best, iteration)
@@ -128,7 +128,7 @@ class MDRNNTrainer:
                 print(f"End of Training because of early stopping at epoch {epoch}")
                 break
         self.logger.end_log_training('mdrnn')
-        return self.mdrnn, test_loss
+        return self.mdrnn, test_losses
 
     def reload_model(self, mdrnn, device = None):
         reload_file = join(self.model_dir, f'checkpoints/{self.best_mdrnn_filename}')
@@ -185,7 +185,7 @@ class MDRNNTrainer:
 
         self.train_loader = DataLoader(dataset=train_dataset,
                                        batch_size=self.config['mdrnn_trainer']['batch_size'],
-                                       num_workers=self.num_workers, shuffle=True)
+                                       num_workers=self.num_workers, shuffle=True, collate_fn=self.pad_sequence)
 
         test_dataset = self._create_dataset(data_location=self.test_data_dir if self.is_use_specific_test_data else self.data_dir,
                                             buffer_size=self.config['mdrnn_trainer']['test_buffer_size'],
@@ -206,6 +206,12 @@ class MDRNNTrainer:
         if len(dataset._files) == 0:
             raise Exception(f'No files found in {data_location}')
         return dataset
+
+    # def pad_sequence(self, batch):
+    #     (obs, action, reward, terminal, next_obs) = zip(*batch)
+    #
+    #     pass
+
 
     def _to_latent(self, obs, next_obs):
         """ Transform observations to latent space.  """
@@ -298,9 +304,16 @@ class MDRNNTrainer:
             return
 
         average_loss = cum_loss * self.batch_size / len(loader.dataset)
+        reward_loss = cum_mse * self.batch_size / len(loader.dataset)
+        terminal_loss = cum_bce * self.batch_size / len(loader.dataset)
+        next_latent_loss = cum_gmm * self.batch_size / len(loader.dataset)
 
-        self.logger.log_loss('mdrnn', average_loss, epoch, is_train=is_train)
-        return average_loss
+        self.logger.log_average_loss('mdrnn', average_loss, epoch, is_train=is_train)
+        self.logger.log_reward_loss('mdrnn', reward_loss, epoch, is_train=is_train)
+        self.logger.log_terminal_loss('mdrnn', terminal_loss, epoch, is_train=is_train)
+        self.logger.log_next_latent_loss('mdrnn', next_latent_loss, epoch, is_train=is_train)
+
+        return {'average_loss': average_loss, 'reward_loss': reward_loss, 'terminal_loss': terminal_loss, 'next_latent_loss': terminal_loss}
 
     def _save_checkpoint(self, state, is_best, iteration):
         best_model_filename = join(self.model_dir, f"checkpoints/{'iterative_' if self.is_iterative else ''}{self.best_mdrnn_filename}")

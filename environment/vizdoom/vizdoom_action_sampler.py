@@ -6,7 +6,7 @@ class VizdoomActionSampler(BaseActionSampler):
         super().__init__(config, num_actions=1)
 
     def sample(self, previous_action=None):
-        return [random.randint(-1, 1)]
+        return [random.choice([1, 2])]  # set -1 as lowerbound if no operation action is included
 
     def brownian_sample(self, previous_action):
         return self.sample()
@@ -15,4 +15,4 @@ class VizdoomActionSampler(BaseActionSampler):
         return self.sample()
 
     def discrete_action_space(self, action=None):
-        return [-1, 0, 1]
+        return [1, 2]

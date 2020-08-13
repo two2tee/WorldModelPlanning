@@ -9,7 +9,7 @@ class IterationResult:
         self.total_trials = 0
         self.trials_max_rewards = []
         self.trials_rewards = []
-        self.mdrnn_test_loss = 0
+        self.mdrnn_test_losses = {}
 
     def get_average_reward(self):
         return np.mean(self.trials_rewards) if len(self.trials_rewards) > 0 else 0
@@ -28,6 +28,6 @@ class IterationResult:
         return iteration_result
 
     def __str__(self) -> str:
-        return f'\n\nIteration {self.iteration} | mdrnn test loss: {self.mdrnn_test_loss} | total trials in test: {self.total_trials} ' \
+        return f'\n\nIteration {self.iteration} | {self.mdrnn_test_losses} | total trials in test: {self.total_trials} ' \
                f'| test name {self.test_name}' \
                f'\navg max reward: {self.get_average_max_reward()} | avg reward: {self.get_average_reward()}\n\n'

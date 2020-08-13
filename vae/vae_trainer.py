@@ -156,7 +156,7 @@ class VaeTrainer:
             return
 
         train_loss = train_loss / len(self.train_loader.dataset)
-        self.logger.log_loss('vae', train_loss, epoch, is_train=True)
+        self.logger.log_average_loss('vae', train_loss, epoch, is_train=True)
         print(f'====> Epoch: {epoch} Average train loss: {train_loss / len(self.train_loader.dataset)}')
 
     def _test_epoch(self, epoch):
@@ -180,7 +180,7 @@ class VaeTrainer:
 
         test_loss /= len(self.test_loader.dataset)   # Average test loss
         print(f'====> Epoch: {epoch} Average test loss: {test_loss}')
-        self.logger.log_loss('vae', test_loss, epoch, is_train=False)
+        self.logger.log_average_loss('vae', test_loss, epoch, is_train=False)
         return test_loss
 
     def _save_checkpoint(self, state, is_best):
