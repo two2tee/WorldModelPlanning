@@ -1,6 +1,6 @@
 {
     "game": "CarRacing-v0",
-    "experiment_name": "World_Model_D",
+    "experiment_name": "World_Model_F",
     "forced_vae": "World_Model_A",
     "latent_size": 64,
     "num_reconstructions": 64,
@@ -16,7 +16,7 @@
     "mdrnn_dir": "mdrnn",
     "data_dir": "data",
     "test_data_dir": "data_test",
-    "is_pretrained_agent_rollouts_for_testing": true,
+    "is_use_specific_test_data": true,
     "ntbea_tuning":{
         "is_reload_session": false,
         "session_name": "ntbea_session_World_Model_M_RHEA",
@@ -165,9 +165,9 @@
     },
     "iterative_trainer":{
         "iterative_data_dir": "data_iterative",
-        "sequence_length": 500,
-        "num_rollouts": 1000,
-        "num_iterations": 10,
+        "sequence_length": 250,
+        "num_rollouts": 2000,
+        "num_iterations": 20,
         "max_epochs": 10,
         "test_scenario": "planning_whole_random_track",
         "is_random_policy_not_planning": false,
