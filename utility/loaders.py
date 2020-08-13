@@ -113,7 +113,6 @@ class RolloutSequenceDataset(_RolloutDataset):
         return obs, action, reward, terminal, next_obs  # data_random_car format
 
     def _data_per_sequence(self, data_length):
-        # return data_length
         if data_length < self._seq_len:
             raise Exception(f'Sequence length in data is {data_length} which less than stated sequence length of {self._seq_len}')
         return data_length - self._seq_len

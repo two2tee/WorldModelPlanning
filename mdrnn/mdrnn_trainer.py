@@ -185,7 +185,7 @@ class MDRNNTrainer:
 
         self.train_loader = DataLoader(dataset=train_dataset,
                                        batch_size=self.config['mdrnn_trainer']['batch_size'],
-                                       num_workers=self.num_workers, shuffle=True, collate_fn=self.pad_sequence)
+                                       num_workers=self.num_workers, shuffle=True)
 
         test_dataset = self._create_dataset(data_location=self.test_data_dir if self.is_use_specific_test_data else self.data_dir,
                                             buffer_size=self.config['mdrnn_trainer']['test_buffer_size'],
