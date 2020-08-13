@@ -1,12 +1,13 @@
-from environment.vizdoom.vizdoomgym.vizdoomgym.envs.vizdoom_env_definitions import VizdoomTakeCover
+# from environment.vizdoom.vizdoomgym.vizdoomgym.envs.vizdoom_env_definitions import VizdoomTakeCover
 from environment.base_environment import BaseEnvironment
 
 
 class VizdoomEnvironment(BaseEnvironment):
     def __init__(self, config):
-        super().__init__(config)
-        self.environment = VizdoomTakeCover(health=True)
-        self.health = None
+        raise Exception('Currently not working on real2machine please use car racing for now')
+        # super().__init__(config)
+        # self.environment = VizdoomTakeCover(health=True)
+        # self.health = None
 
 
     def reset(self, seed=None):
