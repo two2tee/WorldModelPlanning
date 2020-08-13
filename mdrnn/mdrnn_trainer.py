@@ -207,12 +207,6 @@ class MDRNNTrainer:
             raise Exception(f'No files found in {data_location}')
         return dataset
 
-    # def pad_sequence(self, batch):
-    #     (obs, action, reward, terminal, next_obs) = zip(*batch)
-    #
-    #     pass
-
-
     def _to_latent(self, obs, next_obs):
         """ Transform observations to latent space.  """
         image_height, image_width = self.config['preprocessor']['img_height'], self.config['preprocessor']['img_width']

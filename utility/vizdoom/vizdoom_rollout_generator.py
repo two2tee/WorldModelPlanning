@@ -29,7 +29,7 @@ class RolloutGenerator(BaseRolloutGenerator):
             reward_rollout.append(reward)
             is_done_rollout.append(done)
             if done:
-                break
+                environment.reset()
         environment.close()
         return actions_rollout, states_rollout, reward_rollout, is_done_rollout
 
