@@ -148,7 +148,10 @@ class BasePlanningTester(BaseTester):
                                                                                                           is_simulation_real_environment=True)
         if self.is_render_simulation:
             self.simulated_environment.render()
-        self.environment.render()
+
+        if self.is_render:
+            self.environment.render()
+
         return current_state, reward, is_done, simulated_reward, simulated_is_done, latent_state, hidden_state
 
     def _step_sequence_in_dream(self, actions, current_state, hidden):

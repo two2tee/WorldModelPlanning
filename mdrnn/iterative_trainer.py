@@ -106,7 +106,7 @@ class IterativeTrainer:
         print(f'Done - {self.num_rollouts} rollouts saved in {self.data_dir}')
 
     def _get_rollout_batch(self, num_rollouts_per_thread, thread_id, iteration, vae, mdrnn):  # SLOW
-        environment = gym.make("CarRacing-v0")
+        environment = get_environment(self.config)
         agent_wrapper = AgentWrapper(self.planning_agent, self.config, vae, mdrnn)
         for rollout_number in range(1, num_rollouts_per_thread + 1):
             actions, states, rewards, terminals = self._create_rollout(agent_wrapper, environment, thread_id, rollout_number, num_rollouts_per_thread, iteration)

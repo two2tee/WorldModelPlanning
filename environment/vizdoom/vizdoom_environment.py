@@ -1,5 +1,5 @@
 import gym
-import environment.vizdoom.vizdoom_implementation.vizdoomgym
+import environment.vizdoom.vizdoom_implementation.vizdoomgym  # DO NOT REMOVE - Needed to register custom gym envs
 from environment.base_environment import BaseEnvironment
 
 

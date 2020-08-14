@@ -57,7 +57,7 @@
     },
     "data_generator": {
         "data_prefix": "",
-        "rollouts": 112,
+        "rollouts": 10000,
         "sequence_length": 500,
         "data_output_dir": "data",
         "car_racing": {

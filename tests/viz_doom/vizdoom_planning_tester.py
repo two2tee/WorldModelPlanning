@@ -56,7 +56,7 @@ class VizDoomPlanningTester(BasePlanningTester):
 
         for i in range(self.trials):
             current_state = self.environment.reset(seed)
-            seed = self.environment.seed
+            seed = self.environment.environment.seed
             _ = self.simulated_environment.reset()
 
             latent_state, _ = self._encode_state(current_state)
