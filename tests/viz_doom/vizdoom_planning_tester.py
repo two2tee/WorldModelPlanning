@@ -59,18 +59,17 @@ class VizDoomPlanningTester(BasePlanningTester):
             total_reward = 0
             steps_ran = 0
             elapsed_time = 0
+            is_done = False
 
-            for step in range(args['optimal_steps'] + 75):
-                if self.config['planning']['planning_agent'] == "MCTS":
-                    action = self.planning_agent.search(self.simulated_environment, latent_state, hidden_state)
-                else:
-                    action, step_elites = self.planning_agent.search(self.simulated_environment, latent_state, hidden_state)
-                    elites.append(step_elites)
+            while not is_done:
+                action, step_elites = self._search_action(latent_state, hidden_state)
+                elites.append(step_elites)
 
                 if self.is_render_dream:
                     self._step_sequence_in_dream(self.planning_agent.current_elite.action_sequence, current_state, hidden_state)
 
-                current_state, reward, is_done, simulated_reward, simulated_is_done, latent_state, hidden_state = self._step(action, hidden_state)
+                current_state, reward, is_done, simulated_reward, simulated_is_done, latent_state, hidden_state = \
+                    self._step(action, hidden_state)
 
                 action_history.append(action)
                 total_reward += reward
@@ -112,13 +111,4 @@ class VizDoomPlanningTester(BasePlanningTester):
 
         return actions, total_reward
 
-    def _step_sequence_in_dream(self, actions, current_state, hidden):
-        latent, _ = self._encode_state(current_state)
-        total_reward = 0
 
-        for action in actions:
-            latent, simulated_reward, simulated_is_done, hidden = self.simulated_environment.step(action, hidden, latent,
-                                                                                                  is_simulation_real_environment=True)
-            total_reward += simulated_reward
-            self.simulated_environment.render()
-        return total_reward

@@ -40,6 +40,7 @@ if platform.system() == "Darwin" or platform.system() == "Linux":
     print("Spawn method enabled over fork on Mac OSX / Linux")
     multiprocessing.set_start_method("spawn", force=True)
 
+
 class IterativeTrainer:
     def __init__(self, config, planning_agent, mdrnn_trainer):
         self.config = config
@@ -88,7 +89,6 @@ class IterativeTrainer:
             print('--- Iterative Training Completed ---\n')
             self._save_iteration_stats(iteration_results)
 
-
     def _generate_rollouts(self, iteration):
         vae, mdrnn = self._get_vae_mdrnn()
         vae, mdrnn = vae.eval(), mdrnn.eval()
@@ -132,7 +132,7 @@ class IterativeTrainer:
     def _train_thread(self, iteration, iteration_results):
         vae, mdrnn = self._get_vae_mdrnn()
         _, test_losses = self.mdrnn_trainer.train(vae, mdrnn, data_dir=self.data_dir, max_epochs=self.max_epochs,
-                                                seq_len=self.sequence_length, iteration=iteration)
+                                                  seq_len=self.sequence_length, iteration=iteration)
         iteration_result = iteration_results[iteration]
         iteration_result.mdrnn_test_losses = test_losses
         iteration_results[iteration] = iteration_result
@@ -193,13 +193,9 @@ class IterativeTrainer:
                             terminals=np.array(terminals))
 
     def _reset(self, environment, agent_wrapper):
-        seed = random.randint(0, 2 ** 31 - 1)
-        environment.seed(seed)
         agent_wrapper.reset()
-        environment.reset()
-
-        if self.config['game'] == 'CarRacing-v0':  # TODO Generalize
-            return self.reset_car(environment)
+        obs = environment.reset()
+        return obs, environment
 
     def _save_iteration_stats(self, iteration_results):
         stats_filename = f'iterative_stats_{self.config["experiment_name"]}'
@@ -235,9 +231,3 @@ class IterativeTrainer:
         torch.set_num_threads(threads)
         os.environ['OMP_NUM_THREADS'] = str(threads)
 
-    # TODO Extract
-    def reset_car(self, environment):
-        last_observation = [environment.env.step([0, 0, 0])[0] for _ in range(50)][-1]
-        random_car_position = np.random.randint(len(environment.env.track))
-        environment.car = Car(environment.world, *environment.track[random_car_position][1:4])
-        return last_observation, environment

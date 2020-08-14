@@ -4,17 +4,19 @@ from concurrent.futures.process import ProcessPoolExecutor
 from pprint import pprint
 
 import torch
+import numpy as np
+import matplotlib.pyplot as plt
 from datetime import date
 from os.path import exists, join
 from torch import multiprocessing
 from tests.base_tester import BaseTester
-import matplotlib.pyplot as plt
-import numpy as np
+from utility.visualizer import Visualizer
 from planning.simulation.mcts_simulation import MCTS as MCTS_simulation
 from planning.simulation.rolling_horizon_simulation import RHEA as RHEA_simulation
 from planning.simulation.random_mutation_hill_climbing_simulation import RMHC as RMHC_simulation
 
 # ARGS KEYS PLANNING
+
 ACTION_HISTORY = 'action_history'
 ELITES = 'elites'
 CUSTOM_SEED = 'custom_seed'
@@ -28,6 +30,7 @@ class BasePlanningTester(BaseTester):
         self.is_multithread = self.config['test_suite']['is_multithread']
         self.planning_agent = planning_agent
         self.planning_dir = join('tests', config['test_suite']['planning_test_log_dir'])
+        self.visualizer = Visualizer()
         self.is_render = config['visualization']['is_render']
         self.is_render_simulation = self.config['visualization']['is_render_simulation']
         self.is_render_dream = self.config['visualization']['is_render_dream']
@@ -39,14 +42,18 @@ class BasePlanningTester(BaseTester):
     def get_test_functions(self):
         return NotImplemented
 
-    def _get_trial_results_dto(self, args):
-        return NotImplemented
-
     def _update_trial_results(self, trial_results_dto, reward, total_reward, steps_ran):
         return NotImplemented
 
     def _print_trial_results(self, trial, elapsed_time, total_reward, steps_ran, trial_results_dto):
         return NotImplemented
+
+    def _get_trial_results_dto(self, args):
+        return {
+            'test_name': args[TEST_NAME],
+            'test_success': False,
+            'max_reward': 0,
+        }
 
     def _run_new_session(self):
         print('\n--- RUNNING NEW PLANNING TESTS ---')
@@ -126,6 +133,15 @@ class BasePlanningTester(BaseTester):
         print(f'Total session reward: {session_reward}')
         return self._get_session_total_best_reward(session)
 
+    def _search_action(self, latent_state, hidden_state):
+        if self.config['planning']['planning_agent'] == "MCTS":
+            action = self.planning_agent.search(self.simulated_environment, latent_state, hidden_state)
+            step_elites = []
+        else:
+            action, step_elites = self.planning_agent.search(self.simulated_environment, latent_state, hidden_state)
+
+        return action, step_elites
+
     def _step(self, action, hidden_state):
         current_state, reward, is_done, _ = self.environment.step(action)
         latent_state, _ = self._encode_state(current_state)
@@ -137,6 +153,18 @@ class BasePlanningTester(BaseTester):
             self.simulated_environment.render()
         self.environment.render()
         return current_state, reward, is_done, simulated_reward, simulated_is_done, latent_state, hidden_state
+
+    def _step_sequence_in_dream(self, actions, current_state, hidden):
+        latent, _ = self._encode_state(current_state)
+        total_reward = 0
+
+        for action in actions:
+            latent, simulated_reward, simulated_is_done, hidden = self.simulated_environment.step(action, hidden,
+                                                                                                  latent,
+                                                                                                  is_simulation_real_environment=True)
+            total_reward += simulated_reward
+            self.simulated_environment.render()
+        return total_reward
 
     def _save_test_session(self, test_results):
         save_data = {

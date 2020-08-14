@@ -173,6 +173,12 @@
         "is_random_policy_not_planning": false,
         "fixed_cpu_cores": null
     },
+    "real_environment": {
+        "car_racing": {
+            "skip_zoom": true,
+            "random_intial_car_pos": true
+        }
+    },
     "simulated_environment": {
         "temperature": 1.15,
         "car_racing": {

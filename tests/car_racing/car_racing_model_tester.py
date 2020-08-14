@@ -102,15 +102,14 @@ class ModelTester(BaseTester):
         self._execute_trial(actions, start_track=250)
 
     def _execute_trial(self, actions, start_track=0):
+        self.environment.is_random_inital_car_position = False
         self._print_total_steps(actions)
         print(f"Action sequence [(action, repetition),...]: {actions}")
         for _ in range(self.trials):
-            self.environment.reset(seed=self.seed)
+            init_state = self.environment.reset(seed=self.seed)
             self.simulated_environment.reset()
             self._set_car_pos(start_track)
-            init_state = self._skip_zoom()
-            total_reward_real, total_partial_reward_sim, avg_recon_diff, total_full_sim_reward = self._step(actions,
-                                                                                                            init_state)
+            total_reward_real, total_partial_reward_sim, avg_recon_diff, total_full_sim_reward = self._step(actions, init_state)
             self._print_results(total_reward_real, total_full_sim_reward, total_partial_reward_sim, avg_recon_diff)
 
     def _step(self, actions, current_state):
@@ -126,22 +125,20 @@ class ModelTester(BaseTester):
                 current_state, real_reward, _, _ = self.environment.step(action)
                 latent_state, vae_reconstruction = self._encode_state(current_state)
                 latent_state, simulated_reward, simulated_is_done, hidden_state = self.simulated_environment.step(
-                    action, hidden_state, latent_state,
-                    is_simulation_real_environment=True)
+                    action, hidden_state, latent_state, is_simulation_real_environment=True)
+                mdrnn_reconstruction = self.simulated_environment.current_reconstruction
+
+                self._render(vae_reconstruction)
+
                 total_reward_real += real_reward
                 total_reward_sim += simulated_reward
-                self.vae_render.render(vae_reconstruction)
-                self.environment.render()
-
-                mdrnn_reconstruction = self.simulated_environment.current_reconstruction
-                total_recon_diff += self._compare_reconstructions(vae_reconstruction[0].reshape((64, 64, 3)).numpy(),
-                                                                  mdrnn_reconstruction)
+                total_recon_diff += self._compare_reconstructions(vae_reconstruction[0].reshape((64, 64, 3)).numpy(), mdrnn_reconstruction)
                 steps += 1
 
         return total_reward_real, total_reward_sim, total_recon_diff / steps, total_full_sim_reward
 
     def _step_sequence_in_dream(self, actions, current_state, hidden):
-        vae_reconstruction, latent = self._reconstruct(current_state)
+        latent, vae_reconstruction = self._encode_state(current_state)
         total_reward = 0
         for (action, repetition) in actions:
             for _ in range(repetition):
@@ -168,15 +165,12 @@ class ModelTester(BaseTester):
             steps += repetition
         print(f'Total executed steps: {steps}')
 
-    def _skip_zoom(self):
-        state = None
-        for _ in range(50):
-            state, _, _, _ = self.environment.step([0, 0, 0])
-        self.environment.render()
-        return state
-
     def _compare_reconstructions(self, vae_recon, mdrnn_recon):
         vae_grey = np.mean(vae_recon, axis=2)
         mdrnn_grey = np.mean(mdrnn_recon, axis=2)
         dists = [dist.euclidean(vae_grey[i], mdrnn_grey[i]) for i in range(len(vae_grey))]
         return np.mean(dists)
+
+    def _render(self, vae_reconstruction):
+        self.vae_render.render(vae_reconstruction)
+        self.environment.render()
