@@ -145,16 +145,16 @@ class PlanningTester(BasePlanningTester):
             self._update_trial_results(trial_results_dto, reward, total_reward, steps_ran)
 
             if elites:
-                self._render_fitness_and_trajory(max_generations=len(elites[i])-1, step_elites=elites[i], current_state=current_state)
+                self._render_fitness_and_trajory(step_elites=elites[i], current_state=current_state)
                 self._simulate_dream(elites[i][-1][2], current_state, hidden_state)
 
         self._print_trial_results(None, None, total_reward, steps_ran, trial_results_dto)
 
         return actions, total_reward
 
-    def _render_fitness_and_trajory(self, max_generations, current_state, step_elites):
+    def _render_fitness_and_trajory(self, current_state, step_elites):
         if self.is_render_fitness:
-            self.visualizer.show_fitness_plot(max_generations, step_elites, self.config['planning']['planning_agent'])
+            self.visualizer.show_fitness_plot(max_generations=len(step_elites)-1, elites=step_elites, agent=self.config['planning']['planning_agent'])
 
         if self.is_render_trajectory:
             self.visualizer.show_trajectory_plot(current_state, step_elites, self.config['planning']['planning_agent'],
