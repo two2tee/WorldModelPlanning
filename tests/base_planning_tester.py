@@ -42,9 +42,6 @@ class BasePlanningTester(BaseTester):
     def get_test_functions(self):
         return NotImplemented
 
-    def _update_trial_results(self, trial_results_dto, reward, total_reward, steps_ran):
-        return NotImplemented
-
     def _print_trial_results(self, trial, elapsed_time, total_reward, steps_ran, trial_results_dto):
         return NotImplemented
 

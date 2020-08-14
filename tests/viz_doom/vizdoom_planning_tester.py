@@ -1,6 +1,6 @@
 import time
-
 from tests.base_planning_tester import BasePlanningTester, TEST_NAME, ELITES, CUSTOM_SEED, ACTION_HISTORY
+
 
 class VizDoomPlanningTester(BasePlanningTester):
     def __init__(self, config, vae, mdrnn, preprocessor, environment, planning_agent):
@@ -12,15 +12,25 @@ class VizDoomPlanningTester(BasePlanningTester):
         }
 
     def _get_trial_results_dto(self, args):
-        return NotImplemented
+        base_dto = super(VizDoomPlanningTester, self)._get_trial_results_dto(args)
+        # TODO figure out what additional results to store
+        return base_dto
 
-    def _update_trial_results(self, trial_results_dto, reward, total_reward, steps_ran):
-        return NotImplemented
+    def _update_trial_results(self, trial_results_dto , total_reward):
+        trial_results_dto['max_reward'] = total_reward if total_reward > trial_results_dto['max_reward'] else trial_results_dto['max_reward']
 
     def _print_trial_results(self, trial, elapsed_time, total_reward, steps_ran, trial_results_dto):
-        return NotImplemented
+        test_name = trial_results_dto['test_name']
+        test_success = trial_results_dto['test_success']
 
-
+        trial_str = '' if trial is None else f'Planning trial: {trial}'
+        elapsed_time_str = '' if elapsed_time is None else f'Elapsed_time: {round(elapsed_time, 0)}'
+        success_str = f'Test success: {test_success}' \
+            if test_success else f'Test success: {test_success}\n'
+        print(
+            f'\n\nRESULTS FOR: {test_name}\n{trial_str} | {elapsed_time_str}\n'
+            f'Total reward: {round(total_reward, 2)} | Max reward: {trial_results_dto["max_reward"]} |  Steps on exit: {steps_ran}\n'
+            f'{success_str}')
 
     # TEST METHODS #######################################
 
@@ -75,7 +85,7 @@ class VizDoomPlanningTester(BasePlanningTester):
                 total_reward += reward
                 steps_ran += 1
                 elapsed_time = time.time() - start_time
-                self._update_trial_results(trial_results_dto, reward, total_reward, steps_ran)
+                self._update_trial_results(trial_results_dto, reward)
 
             trial_elites.append(elites)
             trial_actions.append(action_history)
@@ -102,7 +112,7 @@ class VizDoomPlanningTester(BasePlanningTester):
             current_state, reward, is_done, simulated_reward, simulated_is_done, latent_state, hidden_state = self._step(action, hidden_state)
             steps_ran += 1
             total_reward += reward
-            self._update_trial_results(trial_results_dto, reward, total_reward, steps_ran)
+            self._update_trial_results(trial_results_dto, reward)
 
             if self.is_render_dream:
                 self._step_sequence_in_dream(elites[i][-1][2], current_state, hidden_state)
