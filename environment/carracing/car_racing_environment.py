@@ -29,6 +29,6 @@ class CarRacingEnvironment(BaseEnvironment):
     def _randomize_car_pos(self):
         random_car_position = np.random.randint(len(self.environment.env.track))
         self.environment.car = Car(self.environment.world, *self.environment.track[random_car_position][1:4])
-        obs, _, _, _ = self.step([0,0,0])
+        obs, _, _, _ = self.step([0, 0, 0])
         return obs
 
