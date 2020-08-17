@@ -42,7 +42,7 @@ class RolloutGenerator(BaseRolloutGenerator):
 
         # Garbage collection of events in viewer
         obs, _, _, _ = environment.step([0,0,0])
-        environment.environment.viewer.window.dispatch_events()
+        environment.environment.viewer.window.dispatch_events()  # TODO REMOVE AND ENSURE BUG IS FIXED
         return obs, car_position
 
     def _step(self, environment, obs, previous_action, model=None):

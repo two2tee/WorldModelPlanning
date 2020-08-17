@@ -44,7 +44,7 @@ class CarRacingActionSampler(BaseActionSampler):
         new_action = [0, 0, 0]
         new_action[0] = brownian_sample(previous_action[0], upper=-1, lower=1)
         new_action[1] = brownian_sample(previous_action[1], upper=0, lower=1)
-        new_action[2] = brownian_sample(previous_action[1], upper=0, lower=1)
+        new_action[2] = brownian_sample(previous_action[2], upper=0, lower=1)
         return new_action
 
     def discrete_delta_sample(self, previous_action=None):

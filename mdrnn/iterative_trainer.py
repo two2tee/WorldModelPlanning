@@ -26,7 +26,6 @@ from vae.vae import VAE
 from mdrnn.mdrnn import MDRNN
 from os.path import join, exists
 from vae.vae_trainer import VaeTrainer
-from gym.envs.box2d.car_dynamics import Car
 from utility.preprocessor import Preprocessor
 from tests.test_suite_factory import get_planning_tester
 from planning.simulation.agent_wrapper import AgentWrapper
@@ -229,5 +228,5 @@ class IterativeTrainer:
 
     def _set_torch_threads(self, threads):
         torch.set_num_threads(threads)
-        os.environ['OMP_NUM_THREADS'] = str(threads)
+        os.environ['OMP_NUM_THREADS'] = str(threads)  # Inference in CPU to avoid cpu scheduling - slow parallel data generation
 
