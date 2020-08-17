@@ -29,7 +29,7 @@ class VizdoomEnvironment(BaseEnvironment):
         return frame, reward, done, info
 
     def _convert_action(self, action):
-        action_value = action[0] - 1  # since we padded the value with zeros in data loader to maintain same seq length
+        action_value = action[0] - 1  # TODO DO padded value with zeros in data loader to maintain same seq length
         return action_value if action_value != -1 else None # -1 = no operations
 
 
