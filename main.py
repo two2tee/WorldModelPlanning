@@ -60,7 +60,7 @@ class Main:
 
     def _iterative_mdrnn_training(self, mdrnn):
         planning_agent = self.get_planning_agent(config['planning']['planning_agent'])
-        iterative_trainer = IterativeTrainer(config, planning_agent, main.mdrnn_trainer, self.logger)
+        iterative_trainer = IterativeTrainer(config, planning_agent, main.mdrnn_trainer)
         iterative_trainer.train()
         self.mdrnn_trainer.reload_model(mdrnn)
         return

@@ -70,14 +70,17 @@ class TensorboardHandler:
             return
         self.writer = SummaryWriter(f'{self.log_dir_root}/{name}')
 
-    def end_log(self):
+    def commit_log(self):
         self.writer.flush()
+
+    def end_log(self):
+        self.commit_log()
         self.writer.close()
 
     def log_iteration_max_reward(self, name, iteration, max_reward):
-        title = f"{name} - Average Max reward"
+        title = f"{name}/Average Max reward"
         self.writer.add_scalar(title, max_reward, iteration)
 
     def log_iteration_avg_reward(self, name, iteration, avg_reward):
-        title = f"{name} - Average Total reward"
+        title = f"{name}/Average Total reward"
         self.writer.add_scalar(title, avg_reward, iteration)

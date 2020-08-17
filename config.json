@@ -1,6 +1,6 @@
 {
     "game": "CarRacing-v0",
-    "experiment_name": "World_Model_F",
+    "experiment_name": "World_Model_E",
     "forced_vae": "World_Model_A",
     "latent_size": 64,
     "num_reconstructions": 64,
