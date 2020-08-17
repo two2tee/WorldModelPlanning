@@ -60,14 +60,14 @@ class Main:
 
     def _iterative_mdrnn_training(self, mdrnn):
         planning_agent = self.get_planning_agent(config['planning']['planning_agent'])
-        iterative_trainer = IterativeTrainer(config, planning_agent, main.mdrnn_trainer)
+        iterative_trainer = IterativeTrainer(config, planning_agent, main.mdrnn_trainer, self.logger)
         iterative_trainer.train()
         self.mdrnn_trainer.reload_model(mdrnn)
         return
 
     def run_ntbea_tuning(self, vae, mdrnn):
         agent = self.get_planning_agent(self.config['planning']['planning_agent'])
-        planning_tester = get_model_tester(self.config, vae, mdrnn, self.frame_preprocessor, self.environment, agent)
+        planning_tester = get_planning_tester(self.config, vae, mdrnn, self.frame_preprocessor, self.environment, agent)
         ntbea_tuner = PlanningNTBEAWrapper(self.config, planning_tester)
         ntbea_tuner.run_ntbea()
 
@@ -126,4 +126,3 @@ if __name__ == '__main__':
 
     if config["is_play"]:
         main.play_game(vae, mdrnn)
-

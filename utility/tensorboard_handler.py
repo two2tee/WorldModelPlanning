@@ -21,7 +21,7 @@ class TensorboardHandler:
             return
         dataiter = iter(dataloader)
         frames = dataiter.next()
-        self.writer = SummaryWriter(f'{self.log_dir_root}/{name}')
+        self.start_log(name)
         if save_input_image:
             grid_of_images = make_grid(frames)
             self.writer.add_image(tag=f'{name}_training_input_example', img_tensor=grid_of_images, global_step=0)
@@ -31,7 +31,7 @@ class TensorboardHandler:
     def start_log_training_minimal(self, name):
         if not self.is_logging:
             return
-        self.writer = SummaryWriter(f'{self.log_dir_root}/{name}')
+        self.start_log(name)
         self.start_time = time.time()
 
     def log_average_loss(self, name, loss, epoch, is_train):
@@ -63,5 +63,21 @@ class TensorboardHandler:
             return
         elapsed_time = (time.time() - self.start_time)/60
         self.writer.add_text(tag=f'{name} - Total train time', text_string=f'Minutes: {elapsed_time}')
+        self.end_log()
+
+    def start_log(self, name):
+        if not self.is_logging:
+            return
+        self.writer = SummaryWriter(f'{self.log_dir_root}/{name}')
+
+    def end_log(self):
         self.writer.flush()
         self.writer.close()
+
+    def log_iteration_max_reward(self, name, iteration, max_reward):
+        title = f"{name} - Average Max reward"
+        self.writer.add_scalar(title, max_reward, iteration)
+
+    def log_iteration_avg_reward(self, name, iteration, avg_reward):
+        title = f"{name} - Average Total reward"
+        self.writer.add_scalar(title, avg_reward, iteration)

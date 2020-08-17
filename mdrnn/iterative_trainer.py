@@ -41,8 +41,9 @@ if platform.system() == "Darwin" or platform.system() == "Linux":
 
 
 class IterativeTrainer:
-    def __init__(self, config, planning_agent, mdrnn_trainer):
+    def __init__(self, config, planning_agent, mdrnn_trainer, logger):
         self.config = config
+        self.logger = logger
         self.mdrnn_trainer = mdrnn_trainer
         self.planning_agent = planning_agent
         self.threads = self._get_threads()
