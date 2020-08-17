@@ -68,7 +68,7 @@ class TensorboardHandler:
     def start_log(self, name):
         if not self.is_logging:
             return
-        self.writer = SummaryWriter(f'{self.log_dir_root}/{name}')
+        self.writer = SummaryWriter(log_dir=f'{self.log_dir_root}/{name}')
 
     def commit_log(self):
         self.writer.flush()
