@@ -5,7 +5,7 @@ class IterationResult:
     def __init__(self, iteration=0):
         self.iteration = iteration
         self.test_name = None
-        self.seed = None
+        self.trial_seeds = None
         self.total_trials = 0
         self.trials_max_rewards = []
         self.trials_rewards = []

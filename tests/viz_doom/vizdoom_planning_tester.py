@@ -39,62 +39,42 @@ class VizDoomPlanningTester(BasePlanningTester):
         return self._run_plan_or_replay(args=args)
     ##
 
-    def _run_plan_or_replay(self, args):
-        print(args[TEST_NAME])
-        if ACTION_HISTORY in args:
-            return self._replay_planning_test(args)
-        else:
-            return self._run_planning_test(args)
+    def _run_trial(self, trial_i, args, seed):
+        current_state = self.environment.reset(seed)
+        seed = self.environment.environment.seed
+        _ = self.simulated_environment.reset()
 
-    def _run_planning_test(self, args):
-        trial_actions = []
-        trial_rewards = []
-        trial_max_rewards = []
-        trial_elites = []
+        latent_state, _ = self._encode_state(current_state)
+        hidden_state = self.simulated_environment.get_hidden_zeros_state()
 
-        seed = args[CUSTOM_SEED]
+        trial_results_dto = self._get_trial_results_dto(args)
+        elites = []
+        action_history = []
+        start_time = time.time()
+        total_reward = 0
+        steps_ran = 0
+        elapsed_time = 0
+        is_done = False
 
-        for i in range(self.trials):
-            current_state = self.environment.reset(seed)
-            seed = self.environment.environment.seed
-            _ = self.simulated_environment.reset()
+        while not is_done:
+            action, step_elites = self._search_action(latent_state, hidden_state)
+            elites.append(step_elites)
 
-            latent_state, _ = self._encode_state(current_state)
-            hidden_state = self.simulated_environment.get_hidden_zeros_state()
+            if self.is_render_dream:
+                self._step_sequence_in_dream(self.planning_agent.current_elite.action_sequence, current_state,
+                                             hidden_state)
 
-            trial_results_dto = self._get_trial_results_dto(args)
-            elites = []
-            action_history = []
-            start_time = time.time()
-            total_reward = 0
-            steps_ran = 0
-            elapsed_time = 0
-            is_done = False
+            current_state, reward, is_done, simulated_reward, simulated_is_done, latent_state, hidden_state = \
+                self._step(action, hidden_state)
 
-            while not is_done:
-                action, step_elites = self._search_action(latent_state, hidden_state)
-                elites.append(step_elites)
+            action_history.append(action)
+            total_reward += reward
+            steps_ran += 1
+            elapsed_time = time.time() - start_time
+            self._update_trial_results(trial_results_dto, reward)
 
-                if self.is_render_dream:
-                    self._step_sequence_in_dream(self.planning_agent.current_elite.action_sequence, current_state, hidden_state)
-
-                current_state, reward, is_done, simulated_reward, simulated_is_done, latent_state, hidden_state = \
-                    self._step(action, hidden_state)
-
-                action_history.append(action)
-                total_reward += reward
-                steps_ran += 1
-                elapsed_time = time.time() - start_time
-                self._update_trial_results(trial_results_dto, reward)
-
-            trial_elites.append(elites)
-            trial_actions.append(action_history)
-            trial_rewards.append(total_reward)
-            trial_max_rewards.append(trial_results_dto['max_reward'])
-
-            self._print_trial_results(i, elapsed_time, total_reward, steps_ran, trial_results_dto)
-
-        return trial_actions, trial_rewards, trial_elites, trial_max_rewards, seed
+        self._print_trial_results(trial_i, elapsed_time, total_reward, steps_ran, trial_results_dto)
+        return elites, action_history, total_reward, trial_results_dto['max_reward'], seed
 
     def _replay_planning_test(self, args):
         actions = args[ACTION_HISTORY]

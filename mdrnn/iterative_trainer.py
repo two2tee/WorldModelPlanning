@@ -143,12 +143,12 @@ class IterativeTrainer:
         vae, mdrnn = self._get_vae_mdrnn()
         environment = get_environment(self.config)  # Set environment
         tester = get_planning_tester(self.config, vae, mdrnn, preprocessor, environment, self.planning_agent)
-        test_name, trials_actions, trials_rewards, trials_elites, trial_max_rewards, seed = tester.run_specific_test(self.test_scenario)
+        test_name, trials_actions, trials_rewards, trials_elites, trial_max_rewards, trial_seeds = tester.run_specific_test(self.test_scenario)
         environment.close()
 
         iteration_result = iteration_results[iteration]
         iteration_result.test_name = test_name
-        iteration_result.seed = seed
+        iteration_result.trial_seeds = trial_seeds
         iteration_result.total_trials = len(trial_max_rewards)
         iteration_result.trials_rewards = trials_rewards
         iteration_result.trials_max_rewards = trial_max_rewards

@@ -51,11 +51,12 @@
         "is_run_planning_tests":  true,
         "is_reload_planning_session": false,
         "trials": 30,
-        "is_multithread": false,
+        "is_multithread_tests": false,
+        "is_multithread_trials": false,
         "planning_test_log_dir": "planning_test_results",
         "planning_session_to_load": "RHEA_World_Model_L_planning_session_2020-05-20-00.00_total_session_best_reward_804.0589_BEST",
         "car_racing": {
-            "max_negative_count": 100
+            "max_negative_count": 150
         }
     },
     "data_generator": {
