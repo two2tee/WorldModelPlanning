@@ -22,12 +22,12 @@ class PlanningTester(BasePlanningTester):
 
     def get_test_functions(self):
         return {  # (test_func, args)
-                "forward_planning_test": (self._planning_forward_test, {OPTIMAL_REWARD: 66, OPTIMAL_STEPS: 100, RANDOM_REWARD: -7, TILES_TO_COMPLETE: 25, CUSTOM_SEED: 9214}),
-                "left_turn_planning_test": (self._planning_left_turn_test, {OPTIMAL_REWARD: 23, OPTIMAL_STEPS: 60, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 10, CUSTOM_SEED: 9214}),
-                "right_turn_planning_test": (self._planning_right_turn_test,{OPTIMAL_REWARD: 33, OPTIMAL_STEPS: 60, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 11, CUSTOM_SEED: 2}),
-                "s_turn_planning_test": (self._planning_s_turn_test, {OPTIMAL_REWARD: 43, OPTIMAL_STEPS: 80, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 16, CUSTOM_SEED: 9214}),
-                "u_turn_planning_test": (self._planning_u_turn_test,{OPTIMAL_REWARD: 40, OPTIMAL_STEPS: 80, RANDOM_REWARD: -5, TILES_TO_COMPLETE: 15, CUSTOM_SEED: 9214}),
-                "planning_whole_track_no_right_turns_test": (self._planning_whole_track_no_right_turns_test, {OPTIMAL_REWARD: 900, OPTIMAL_STEPS: 1200, RANDOM_REWARD: -32, TILES_TO_COMPLETE: 1200, CUSTOM_SEED: 30}),
+                # "forward_planning_test": (self._planning_forward_test, {OPTIMAL_REWARD: 66, OPTIMAL_STEPS: 100, RANDOM_REWARD: -7, TILES_TO_COMPLETE: 25, CUSTOM_SEED: 9214}),
+                # "left_turn_planning_test": (self._planning_left_turn_test, {OPTIMAL_REWARD: 23, OPTIMAL_STEPS: 60, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 10, CUSTOM_SEED: 9214}),
+                # "right_turn_planning_test": (self._planning_right_turn_test,{OPTIMAL_REWARD: 33, OPTIMAL_STEPS: 60, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 11, CUSTOM_SEED: 2}),
+                # "s_turn_planning_test": (self._planning_s_turn_test, {OPTIMAL_REWARD: 43, OPTIMAL_STEPS: 80, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 16, CUSTOM_SEED: 9214}),
+                # "u_turn_planning_test": (self._planning_u_turn_test,{OPTIMAL_REWARD: 40, OPTIMAL_STEPS: 80, RANDOM_REWARD: -5, TILES_TO_COMPLETE: 15, CUSTOM_SEED: 9214}),
+                # "planning_whole_track_no_right_turns_test": (self._planning_whole_track_no_right_turns_test, {OPTIMAL_REWARD: 900, OPTIMAL_STEPS: 1200, RANDOM_REWARD: -32, TILES_TO_COMPLETE: 1200, CUSTOM_SEED: 30}),
                 "planning_whole_random_track": (self._planning_whole_random_track_test, {OPTIMAL_REWARD: 900, OPTIMAL_STEPS: 1200, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 1200, CUSTOM_SEED: None})
                 }
 
@@ -97,6 +97,8 @@ class PlanningTester(BasePlanningTester):
             steps_ran = 0
             elapsed_time = 0
 
+            negative_counter = 0
+
             for step in range(args['optimal_steps']+75):
                 action, step_elites = self._search_action(latent_state, hidden_state)
                 elites.append(step_elites)
@@ -107,6 +109,10 @@ class PlanningTester(BasePlanningTester):
 
                 current_state, reward, is_done, simulated_reward, simulated_is_done, latent_state, hidden_state = \
                     self._step(action, hidden_state)
+
+                negative_counter = 0 if reward > 0 else negative_counter + 1
+                if reward == -100 or negative_counter == self.config['test_suite']['car_racing']['max_negative_count']:
+                    break
 
                 action_history.append(action)
                 total_reward += reward
