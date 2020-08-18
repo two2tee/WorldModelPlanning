@@ -103,7 +103,7 @@ class PlanningTester(BasePlanningTester):
                 self._step(action, hidden_state)
 
             negative_counter = 0 if reward > 0 else negative_counter + 1
-            if reward == -100 or negative_counter == self.config['test_suite']['car_racing']['max_negative_count']:
+            if is_done or reward == -100 or negative_counter == self.config['test_suite']['car_racing']['max_negative_count']:
                 break
 
             action_history.append(action)
