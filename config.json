@@ -50,7 +50,7 @@
         "is_run_model_tests": false,
         "is_run_planning_tests":  false,
         "is_reload_planning_session": false,
-        "trials": 3,
+        "trials": 30,
         "is_multithread": false,
         "planning_test_log_dir": "planning_test_results",
         "planning_session_to_load": "RHEA_World_Model_L_planning_session_2020-05-20-00.00_total_session_best_reward_804.0589_BEST"
@@ -171,7 +171,8 @@
         "max_epochs": 10,
         "test_scenario": "planning_whole_random_track",
         "is_random_policy_not_planning": false,
-        "fixed_cpu_cores": null
+        "fixed_cpu_cores": null,
+        "max_test_threads": 3
     },
     "real_environment": {
         "car_racing": {

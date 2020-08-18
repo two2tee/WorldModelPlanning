@@ -56,6 +56,7 @@ class IterativeTrainer:
         self.sequence_length = config["iterative_trainer"]["sequence_length"]
         self.iteration_stats_dir = join(self.config['mdrnn_dir'], 'iteration_stats')
         self.is_random_policy_not_planning = config["iterative_trainer"]["is_random_policy_not_planning"]
+        self.max_test_threads = config["iterative_trainer"]["max_test_threads"]
         self.test_lock = Lock()
 
 
@@ -113,7 +114,7 @@ class IterativeTrainer:
         environment.close()
 
     def _test_planning(self, iteration, iteration_results, test_threads):
-        if len(test_threads) > 3 or self.threads == 1:  # Prevent spawning too many test threads
+        if len(test_threads) > self.max_test_threads or self.threads == 1:  # Prevent spawning too many test threads
             [p.join() for p in test_threads]
         p = Process(target=self._test_thread, args=[iteration, iteration_results])
         p.start()
