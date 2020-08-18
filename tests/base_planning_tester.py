@@ -14,6 +14,7 @@ from utility.visualizer import Visualizer
 from planning.simulation.mcts_simulation import MCTS as MCTS_simulation
 from planning.simulation.rolling_horizon_simulation import RHEA as RHEA_simulation
 from planning.simulation.random_mutation_hill_climbing_simulation import RMHC as RMHC_simulation
+from tqdm import tqdm
 
 # ARGS KEYS PLANNING
 ACTION_HISTORY = 'action_history'
@@ -144,7 +145,7 @@ class BasePlanningTester(BaseTester):
                     trial_elites.append(elites)
                     trial_seeds.append(seed)
         else:
-            for i in range(self.trials):
+            for i in tqdm(range(self.trials), desc=f'Planning Test on {args[TEST_NAME]} with {self.trials} trials'):
                 elites, action_history, total_reward, max_reward, seed = self._run_trial(i, args, seed)
                 trial_actions.append(action_history)
                 trial_rewards.append(total_reward)
