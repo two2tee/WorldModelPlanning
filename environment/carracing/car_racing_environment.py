@@ -13,6 +13,7 @@ class CarRacingEnvironment(BaseEnvironment):
         self.is_random_inital_car_position = self.config['real_environment']['car_racing']['random_intial_car_pos']
 
     def reset(self, seed=None):
+        super(CarRacingEnvironment, self).reset()
         if self.environment is None:
             self.environment = gym.make(self.game_name)
 

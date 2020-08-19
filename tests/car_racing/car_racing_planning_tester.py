@@ -90,7 +90,7 @@ class PlanningTester(BasePlanningTester):
         elapsed_time = 0
 
         negative_counter = 0
-
+        is_done = False
         for step in range(args['optimal_steps'] + 75):
             action, step_elites = self._search_action(latent_state, hidden_state)
             elites.append(step_elites)
@@ -99,13 +99,13 @@ class PlanningTester(BasePlanningTester):
 
             self._simulate_dream(self.planning_agent.current_elite.action_sequence, current_state, hidden_state)
 
+            if is_done or negative_counter == self.config['test_suite']['car_racing']['max_negative_count']:
+                break
+
             current_state, reward, is_done, simulated_reward, simulated_is_done, latent_state, hidden_state = \
                 self._step(action, hidden_state)
 
             negative_counter = 0 if reward > 0 else negative_counter + 1
-            if is_done or reward == -100 or negative_counter == self.config['test_suite']['car_racing']['max_negative_count']:
-                break
-
             action_history.append(action)
             total_reward += reward
             steps_ran += 1

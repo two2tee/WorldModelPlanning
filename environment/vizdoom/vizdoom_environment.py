@@ -10,6 +10,7 @@ class VizdoomEnvironment(BaseEnvironment):
         # self.health = None
 
     def reset(self, seed=None):
+        super(VizdoomEnvironment, self).reset()
         if seed:
             self.environment.seed(seed)
         states = self.environment.reset()

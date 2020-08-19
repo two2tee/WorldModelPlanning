@@ -26,7 +26,7 @@ class BaseEnvironment:
         return state, reward, is_done, info
 
     def reset(self, seed=None):
-        return NotImplemented
+        self._is_done = False
 
     def render(self):
         if self._is_done:

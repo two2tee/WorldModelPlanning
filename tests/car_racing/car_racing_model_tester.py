@@ -55,6 +55,11 @@ class ModelTester(BaseTester):
         actions = [([0, 0.1, 0], 60), ([0, 1, 0], 20)]
         self._execute_trial(actions, start_track=25)
 
+    def _forward_oscilation(self):
+        print(f'\n----- Forward drive fast oscilation test ------')
+        actions = [([0, 0.1, 0], 10), ([0, 1, 0], 20)]
+        self._execute_trial(actions, start_track=25)
+
     def _drive_to_grass_test(self):
         print(f'\n----- Drive to grass test ------')
         actions = [([1, 0.5, 0], 30), ([0, 0.3, 0], 50)]  # actions: steer right, drive and break

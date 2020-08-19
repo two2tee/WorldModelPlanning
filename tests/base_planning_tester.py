@@ -208,6 +208,7 @@ class BasePlanningTester(BaseTester):
                                                                                                   is_simulation_real_environment=True)
             total_reward += simulated_reward
             self.simulated_environment.render()
+        print(total_reward)
         return total_reward
 
     def _save_test_session(self, test_results):

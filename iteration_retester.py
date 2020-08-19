@@ -92,12 +92,12 @@ def load_iteration_stats(experiment_name):
             return iteration_results
     return {}
 
-experiment_names = ['World_Model_A', 'World_Model_B', 'World_Model_C', 'World_Model_D']
+torch.set_num_threads(1)
+os.environ['OMP_NUM_THREADS'] = str(1)  # Inference in CPU to avoid cpu scheduling - slow parallel data generation
+
+experiment_names = ['World_Model_A']#, 'World_Model_B', 'World_Model_C', 'World_Model_D']
 for experiment_name in experiment_names:
     frame_preprocessor = Preprocessor(config['preprocessor'])
-
-    environment = get_environment(config)
-    agent = get_planning_agent()
 
     vae_trainer = VaeTrainer(config, frame_preprocessor, TensorboardHandler(is_logging=True))
     vae = VAE(config)
@@ -111,7 +111,13 @@ for experiment_name in experiment_names:
 
     iteration_results = load_iteration_stats(experiment_name)
     for file in files:
-        print(f'current experiment {experiment_name}')
+        if get_digit_from_path(file) < 9:
+            continue
+
+        environment = get_environment(config)
+        agent = get_planning_agent()
+
+        print(f'current experiment {experiment_name} - file: {file}')
         current_iteration = int(get_digit_from_path(file))
         iteration_result = iteration_results[current_iteration]
         mdrnn = reload_model(file)
