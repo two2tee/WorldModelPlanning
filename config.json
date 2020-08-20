@@ -4,7 +4,7 @@
     "forced_vae": "World_Model_A",
     "latent_size": 64,
     "num_reconstructions": 64,
-    "is_generate_data": true,
+    "is_generate_data": false,
     "is_train_vae": false,
     "is_train_mdrnn": true,
     "is_iterative_train_mdrnn": false,
