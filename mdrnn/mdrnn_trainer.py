@@ -96,7 +96,7 @@ class MDRNNTrainer:
         self.vae = vae.to(self.device)
         self.mdrnn = mdrnn.to(self.device)
         self._load_data()
-        self.logger.start_log_training_minimal(name=f'{self.session_name}'+f'_iteration_{iteration}' if self.is_iterative else '')
+        self.logger.start_log_training_minimal(name=f'{self.session_name}{f"_iteration_{iteration}" if self.is_iterative else ""}')
         self.optimizer = optim.Adam(self.mdrnn.parameters(), lr=self.config['mdrnn_trainer']['learning_rate'])
         self.scheduler = ReduceLROnPlateau(self.optimizer, 'min', factor=0.5, patience=5)
         self.earlystopping = EarlyStopping('min', patience=30)
@@ -104,6 +104,7 @@ class MDRNNTrainer:
         test = partial(self._data_pass, is_train=False, include_reward=True)
 
         start_epoch, current_best = self._reload_training_session()
+        start_epoch += 1
         max_epochs = self.config['mdrnn_trainer']['max_epochs'] if max_epochs is None else max_epochs
 
         if start_epoch > max_epochs:
@@ -175,7 +176,7 @@ class MDRNNTrainer:
             epoch = 1 if self.is_iterative else state['epoch']
             return epoch, best_test_loss
         print('No mdrnn found. Skip reloading...')
-        return 1, None  # start epoch
+        return 0, None  # start epoch
 
     def _load_data(self):  # To avoid loading data when not training
         train_dataset = self._create_dataset(data_location=self.data_dir,
@@ -259,10 +260,6 @@ class MDRNNTrainer:
         progress_bar = tqdm(total=len(loader.dataset) if len(loader.dataset) >= 0 else 1, desc=f"{'Train' if is_train else 'Test'} Epoch {epoch}")
         for i, batch in enumerate(loader):
             obs, action, reward, terminal, next_obs = [arr.to(self.device) for arr in batch]
-            # if obs.shape[0] is not self.batch_size:
-            #     print(f'Skipped bad batch - Batch size was {obs.shape[0]} but expected {self.batch_size}')
-            #     progress_bar.update(self.batch_size)
-            #     continue
 
             # transform obs to latent states
             latent_obs, latent_next_obs = self._to_latent(obs, next_obs)

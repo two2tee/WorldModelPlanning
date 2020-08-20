@@ -1,6 +1,6 @@
 {
     "game": "CarRacing-v0",
-    "experiment_name": "World_Model_TEST",
+    "experiment_name": "World_Model_Random",
     "forced_vae": "World_Model_A",
     "latent_size": 64,
     "num_reconstructions": 64,
@@ -157,7 +157,7 @@
         "max_epochs": 20,
         "learning_rate": 0.001,
         "gradient_clip": 1.0,
-        "sequence_length": 250,
+        "sequence_length": 500,
         "batch_size": 32,
         "train_buffer_size": 30,
         "test_buffer_size": 10,

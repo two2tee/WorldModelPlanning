@@ -90,7 +90,7 @@ class TensorboardHandler:
         if is_train:
             self._train_writer.add_scalar(tag, loss, epoch)
         else:
-            self._train_writer.add_scalar(tag, loss, epoch)
+            self._test_writer.add_scalar(tag, loss, epoch)
 
     def log_iteration_max_reward(self, name, iteration, max_reward):
         title = f"{name}/Average Max reward"
