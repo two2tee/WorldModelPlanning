@@ -37,12 +37,12 @@ class RolloutGenerator(BaseRolloutGenerator):
         environment.reset()
 
         # Worse total reward by randomizing car position
-        car_position = np.random.randint(len(environment.track))
+        car_position = np.random.randint(len(environment.environment.track))
         environment.environment.car = Car(environment.environment.world, *environment.environment.track[car_position][1:4])
 
         # Garbage collection of events in viewer
         obs, _, _, _ = environment.step([0,0,0])
-        environment.environment.viewer.window.dispatch_events()
+        environment.environment.viewer.window.dispatch_events()  # TODO REMOVE AND ENSURE BUG IS FIXED
         return obs, car_position
 
     def _step(self, environment, obs, previous_action, model=None):

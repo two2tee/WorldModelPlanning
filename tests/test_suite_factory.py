@@ -10,7 +10,7 @@ from tests.viz_doom.vizdoom_planning_tester import VizDoomPlanningTester
 def get_planning_tester(config, vae, mdrnn, preprocessor, environment, agent):
     if config['game'] == 'CarRacing-v0':
         return CarRacingPlanningTester(config, vae, mdrnn, preprocessor, environment, agent)
-    if config['game'] == 'viz-doom':
+    if config['game'] == 'vizdoom-v0':
         return VizDoomPlanningTester(config, vae, mdrnn, preprocessor, environment, agent)
     raise Exception(f'No implementation of planning tester was found for game: {config["game"]}')
 
@@ -18,6 +18,6 @@ def get_planning_tester(config, vae, mdrnn, preprocessor, environment, agent):
 def get_model_tester(config, vae, mdrnn, preprocessor, environment):
     if config['game'] == 'CarRacing-v0':
         return CarRacingModelTester(config, vae, mdrnn, preprocessor, environment)
-    if config['game'] == 'viz-doom':
+    if config['game'] == 'vizdoom-v0':
         return NotImplemented()
     raise Exception(f'No implementation of model tester was found for game: {config["game"]}')

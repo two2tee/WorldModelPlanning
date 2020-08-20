@@ -13,7 +13,6 @@ import os
 import gym
 import time
 import pickle
-import random
 import platform
 import numpy as np
 import multiprocessing
@@ -26,12 +25,12 @@ from vae.vae import VAE
 from mdrnn.mdrnn import MDRNN
 from os.path import join, exists
 from vae.vae_trainer import VaeTrainer
-from gym.envs.box2d.car_dynamics import Car
 from utility.preprocessor import Preprocessor
 from tests.test_suite_factory import get_planning_tester
 from planning.simulation.agent_wrapper import AgentWrapper
 from environment.environment_factory import get_environment
-from torch.multiprocessing import Pool, Process, Manager, RLock
+from utility.tensorboard_handler import TensorboardHandler
+from torch.multiprocessing import Pool, Process, Manager, RLock, Lock
 from mdrnn.iteration_stats.iteration_result import IterationResult
 from environment.actions.action_sampler_factory import get_action_sampler
 gym.logger.set_level(40)  # Disable user warnings
@@ -39,6 +38,7 @@ gym.logger.set_level(40)  # Disable user warnings
 if platform.system() == "Darwin" or platform.system() == "Linux":
     print("Spawn method enabled over fork on Mac OSX / Linux")
     multiprocessing.set_start_method("spawn", force=True)
+
 
 class IterativeTrainer:
     def __init__(self, config, planning_agent, mdrnn_trainer):
@@ -56,6 +56,9 @@ class IterativeTrainer:
         self.sequence_length = config["iterative_trainer"]["sequence_length"]
         self.iteration_stats_dir = join(self.config['mdrnn_dir'], 'iteration_stats')
         self.is_random_policy_not_planning = config["iterative_trainer"]["is_random_policy_not_planning"]
+        self.max_test_threads = config["iterative_trainer"]["max_test_threads"]
+        self.test_lock = Lock()
+
 
         if not exists(self.iteration_stats_dir):
             os.mkdir(self.iteration_stats_dir)
@@ -72,7 +75,6 @@ class IterativeTrainer:
             iteration_results = manager.dict(iteration_results)
             test_threads = []
             start_time = time.time()
-
             for _ in tqdm(range(self.num_iterations), desc=f"Current iteration {iterations_count+1}"):  # TODO: replace with "while task (900+ reward) is not completed"
                 iterations_count += 1
                 iteration_results[iterations_count] = IterationResult(iteration=iterations_count)
@@ -84,10 +86,8 @@ class IterativeTrainer:
                 print(f'Iterations for model: {iterations_count} - {round((time.time() - start_time), 2)} seconds')
 
             [p.join() for p in test_threads]  # ensure all tests are done before exit
-
             print('--- Iterative Training Completed ---\n')
             self._save_iteration_stats(iteration_results)
-
 
     def _generate_rollouts(self, iteration):
         vae, mdrnn = self._get_vae_mdrnn()
@@ -106,7 +106,7 @@ class IterativeTrainer:
         print(f'Done - {self.num_rollouts} rollouts saved in {self.data_dir}')
 
     def _get_rollout_batch(self, num_rollouts_per_thread, thread_id, iteration, vae, mdrnn):  # SLOW
-        environment = gym.make("CarRacing-v0")
+        environment = get_environment(self.config)
         agent_wrapper = AgentWrapper(self.planning_agent, self.config, vae, mdrnn)
         for rollout_number in range(1, num_rollouts_per_thread + 1):
             actions, states, rewards, terminals = self._create_rollout(agent_wrapper, environment, thread_id, rollout_number, num_rollouts_per_thread, iteration)
@@ -114,7 +114,7 @@ class IterativeTrainer:
         environment.close()
 
     def _test_planning(self, iteration, iteration_results, test_threads):
-        if len(test_threads) > 3 or self.threads == 1:  # Prevent spawning too many test threads
+        if len(test_threads) > self.max_test_threads or self.threads == 1:  # Prevent spawning too many test threads
             [p.join() for p in test_threads]
         p = Process(target=self._test_thread, args=[iteration, iteration_results])
         p.start()
@@ -132,7 +132,7 @@ class IterativeTrainer:
     def _train_thread(self, iteration, iteration_results):
         vae, mdrnn = self._get_vae_mdrnn()
         _, test_losses = self.mdrnn_trainer.train(vae, mdrnn, data_dir=self.data_dir, max_epochs=self.max_epochs,
-                                                seq_len=self.sequence_length, iteration=iteration)
+                                                  seq_len=self.sequence_length, iteration=iteration)
         iteration_result = iteration_results[iteration]
         iteration_result.mdrnn_test_losses = test_losses
         iteration_results[iteration] = iteration_result
@@ -143,16 +143,18 @@ class IterativeTrainer:
         vae, mdrnn = self._get_vae_mdrnn()
         environment = get_environment(self.config)  # Set environment
         tester = get_planning_tester(self.config, vae, mdrnn, preprocessor, environment, self.planning_agent)
-        test_name, trials_actions, trials_rewards, trials_elites, trial_max_rewards, seed = tester.run_specific_test(self.test_scenario)
+        test_name, trials_actions, trials_rewards, trials_elites, trial_max_rewards, trial_seeds = tester.run_specific_test(self.test_scenario)
         environment.close()
 
         iteration_result = iteration_results[iteration]
+        iteration_result.agent_name = self.config['planning']['planning_agent']
         iteration_result.test_name = test_name
-        iteration_result.seed = seed
+        iteration_result.trial_seeds = trial_seeds
         iteration_result.total_trials = len(trial_max_rewards)
         iteration_result.trials_rewards = trials_rewards
         iteration_result.trials_max_rewards = trial_max_rewards
         iteration_results[iteration] = iteration_result
+        self._log_iteration_test_results(iteration_result)
         self._save_iteration_stats(iteration_results)
         print(f'Test for iteration: {iteration} completed')
         return test_name
@@ -193,13 +195,25 @@ class IterativeTrainer:
                             terminals=np.array(terminals))
 
     def _reset(self, environment, agent_wrapper):
-        seed = random.randint(0, 2 ** 31 - 1)
-        environment.seed(seed)
         agent_wrapper.reset()
-        environment.reset()
+        obs = environment.reset()
+        return obs, environment
 
-        if self.config['game'] == 'CarRacing-v0':  # TODO Generalize
-            return self.reset_car(environment)
+    def _log_iteration_test_results(self, iteration_result):
+        self.test_lock.acquire()
+        try:
+            logger = TensorboardHandler(is_logging=True)
+            logger.start_log(name=f'{iteration_result.agent_name}_{self.config["experiment_name"]}_iterative_planning_test_results')
+
+            title = f'{iteration_result.test_name}_trials_{iteration_result.total_trials}'
+            logger.log_iteration_max_reward(name=title,
+                                                 iteration=iteration_result.iteration, max_reward=iteration_result.get_average_max_reward())
+            logger.log_iteration_avg_reward(name=title,
+                                            iteration=iteration_result.iteration, avg_reward=iteration_result.get_average_total_reward())
+            logger.end_log()
+
+        finally:
+            self.test_lock.release()  # release lock, no matter what
 
     def _save_iteration_stats(self, iteration_results):
         stats_filename = f'iterative_stats_{self.config["experiment_name"]}'
@@ -233,11 +247,5 @@ class IterativeTrainer:
 
     def _set_torch_threads(self, threads):
         torch.set_num_threads(threads)
-        os.environ['OMP_NUM_THREADS'] = str(threads)
+        os.environ['OMP_NUM_THREADS'] = str(threads)  # Inference in CPU to avoid cpu scheduling - slow parallel data generation
 
-    # TODO Extract
-    def reset_car(self, environment):
-        last_observation = [environment.env.step([0, 0, 0])[0] for _ in range(50)][-1]
-        random_car_position = np.random.randint(len(environment.env.track))
-        environment.car = Car(environment.world, *environment.track[random_car_position][1:4])
-        return last_observation, environment

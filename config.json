@@ -1,13 +1,13 @@
 {
     "game": "CarRacing-v0",
-    "experiment_name": "World_Model_F",
+    "experiment_name": "World_Model_Random",
     "forced_vae": "World_Model_A",
     "latent_size": 64,
     "num_reconstructions": 64,
-    "is_generate_data": false,
+    "is_generate_data": true,
     "is_train_vae": false,
-    "is_train_mdrnn": false,
-    "is_iterative_train_mdrnn": true,
+    "is_train_mdrnn": true,
+    "is_iterative_train_mdrnn": false,
     "is_ntbea_param_tune": false,
     "is_play": false,
     "is_dream_play": false,
@@ -16,7 +16,7 @@
     "mdrnn_dir": "mdrnn",
     "data_dir": "data",
     "test_data_dir": "data_test",
-    "is_use_specific_test_data": true,
+    "is_use_specific_test_data": false  ,
     "ntbea_tuning":{
         "is_reload_session": false,
         "session_name": "ntbea_session_World_Model_M_RHEA",
@@ -50,14 +50,18 @@
         "is_run_model_tests": false,
         "is_run_planning_tests":  false,
         "is_reload_planning_session": false,
-        "trials": 3,
-        "is_multithread": false,
+        "trials": 30,
+        "is_multithread_tests": false,
+        "is_multithread_trials": false,
         "planning_test_log_dir": "planning_test_results",
-        "planning_session_to_load": "RHEA_World_Model_L_planning_session_2020-05-20-00.00_total_session_best_reward_804.0589_BEST"
+        "planning_session_to_load": "RHEA_World_Model_L_planning_session_2020-05-20-00.00_total_session_best_reward_804.0589_BEST",
+        "car_racing": {
+            "max_negative_count": 150
+        }
     },
     "data_generator": {
         "data_prefix": "",
-        "rollouts": 112,
+        "rollouts": 32,
         "sequence_length": 500,
         "data_output_dir": "data",
         "car_racing": {
@@ -153,8 +157,8 @@
         "max_epochs": 20,
         "learning_rate": 0.001,
         "gradient_clip": 1.0,
-        "sequence_length": 250,
-        "batch_size": 16,
+        "sequence_length": 500,
+        "batch_size": 32,
         "train_buffer_size": 30,
         "test_buffer_size": 10,
         "train_test_files_ratio": 0.8,
@@ -171,7 +175,14 @@
         "max_epochs": 10,
         "test_scenario": "planning_whole_random_track",
         "is_random_policy_not_planning": false,
-        "fixed_cpu_cores": null
+        "fixed_cpu_cores": null,
+        "max_test_threads": 3
+    },
+    "real_environment": {
+        "car_racing": {
+            "skip_zoom": true,
+            "random_intial_car_pos": true
+        }
     },
     "simulated_environment": {
         "temperature": 1.15,

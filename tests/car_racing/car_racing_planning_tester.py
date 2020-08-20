@@ -1,32 +1,20 @@
-import os
 import time
-import torch
-import pickle
-import numpy as np
-import multiprocessing
-import matplotlib.pyplot as plt
-from pprint import pprint
-from datetime import date
-from os.path import join, exists
-
 from tests.base_planning_tester import BasePlanningTester, TEST_NAME, ELITES, CUSTOM_SEED, ACTION_HISTORY
-from utility.visualizer import Visualizer
 from gym.envs.box2d.car_dynamics import Car
-from concurrent.futures import ProcessPoolExecutor
 
 # custom args
 OPTIMAL_STEPS = 'optimal_steps'
 OPTIMAL_REWARD = 'optimal_reward'
 RANDOM_REWARD = 'random_reward'
 TILES_TO_COMPLETE = 'tiles_to_complete'
-
+START_TRACK = 'start_track'
 
 class PlanningTester(BasePlanningTester):
     def __init__(self, config, vae, mdrnn, preprocessor, environment, planning_agent):
         super().__init__(config, vae, mdrnn, preprocessor, environment, planning_agent)
+        self.environment.is_random_inital_car_position = False
         self.car_forward_velocity_approx = 0
         self.velocity_growth_penalizer = 0.005
-        self.visualizer = Visualizer()
         self.is_render_best_elite_only = self.config['visualization']['is_render_best_elite_only']
         self.is_render_fitness = self.config['visualization']['is_render_fitness']
         self.is_render_trajectory = self.config['visualization']['is_render_trajectory']
@@ -34,12 +22,12 @@ class PlanningTester(BasePlanningTester):
 
     def get_test_functions(self):
         return {  # (test_func, args)
-                "forward_planning_test": (self._planning_forward_test, {OPTIMAL_REWARD: 66, OPTIMAL_STEPS: 100, RANDOM_REWARD: -7, TILES_TO_COMPLETE: 25, CUSTOM_SEED: 9214}),
-                "left_turn_planning_test": (self._planning_left_turn_test, {OPTIMAL_REWARD: 23, OPTIMAL_STEPS: 60, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 10, CUSTOM_SEED: 9214}),
-                "right_turn_planning_test": (self._planning_right_turn_test,{OPTIMAL_REWARD: 33, OPTIMAL_STEPS: 60, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 11, CUSTOM_SEED: 2}),
-                "s_turn_planning_test": (self._planning_s_turn_test, {OPTIMAL_REWARD: 43, OPTIMAL_STEPS: 80, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 16, CUSTOM_SEED: 9214}),
-                "u_turn_planning_test": (self._planning_u_turn_test,{OPTIMAL_REWARD: 40, OPTIMAL_STEPS: 80, RANDOM_REWARD: -5, TILES_TO_COMPLETE: 15, CUSTOM_SEED: 9214}),
-                "planning_whole_track_no_right_turns_test": (self._planning_whole_track_no_right_turns_test, {OPTIMAL_REWARD: 900, OPTIMAL_STEPS: 1200, RANDOM_REWARD: -32, TILES_TO_COMPLETE: 1200, CUSTOM_SEED: 30}),
+                # "forward_planning_test": (self._planning_forward_test, {OPTIMAL_REWARD: 66, OPTIMAL_STEPS: 100, RANDOM_REWARD: -7, TILES_TO_COMPLETE: 25, CUSTOM_SEED: 9214}),
+                # "left_turn_planning_test": (self._planning_left_turn_test, {OPTIMAL_REWARD: 23, OPTIMAL_STEPS: 60, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 10, CUSTOM_SEED: 9214}),
+                # "right_turn_planning_test": (self._planning_right_turn_test,{OPTIMAL_REWARD: 33, OPTIMAL_STEPS: 60, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 11, CUSTOM_SEED: 2}),
+                # "s_turn_planning_test": (self._planning_s_turn_test, {OPTIMAL_REWARD: 43, OPTIMAL_STEPS: 80, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 16, CUSTOM_SEED: 9214}),
+                # "u_turn_planning_test": (self._planning_u_turn_test,{OPTIMAL_REWARD: 40, OPTIMAL_STEPS: 80, RANDOM_REWARD: -5, TILES_TO_COMPLETE: 15, CUSTOM_SEED: 9214}),
+                # "planning_whole_track_no_right_turns_test": (self._planning_whole_track_no_right_turns_test, {OPTIMAL_REWARD: 900, OPTIMAL_STEPS: 1200, RANDOM_REWARD: -32, TILES_TO_COMPLETE: 1200, CUSTOM_SEED: 30}),
                 "planning_whole_random_track": (self._planning_whole_random_track_test, {OPTIMAL_REWARD: 900, OPTIMAL_STEPS: 1200, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 1200, CUSTOM_SEED: None})
                 }
 
@@ -47,100 +35,87 @@ class PlanningTester(BasePlanningTester):
 
     def _planning_forward_test(self, args):
         args[TEST_NAME] = '----- Forward planning test ------'
-        return self._run_plan_or_replay(start_track=25, args=args)
+        args[START_TRACK] = 25
+        return self._run_plan_or_replay(args=args)
 
     def _planning_left_turn_test(self, args):
         args[TEST_NAME] = '----- Left Turn planning test ------'
-        return self._run_plan_or_replay(start_track=14, args=args)
+        args[START_TRACK] = 14
+        return self._run_plan_or_replay(args=args)
 
     def _planning_right_turn_test(self, args):
         args[TEST_NAME] = '----- Right Turn planning test ------'
-        return self._run_plan_or_replay(start_track=222, args=args)
+        args[START_TRACK] = 222
+        return self._run_plan_or_replay(args=args)
 
     def _planning_u_turn_test(self, args):
         args[TEST_NAME] = '----- U-Turn planning test ------'
-        return self._run_plan_or_replay(start_track=103, args=args)
+        args[START_TRACK] = 103
+        return self._run_plan_or_replay(args=args)
 
     def _planning_s_turn_test(self, args):
         args[TEST_NAME] = '----- S-Turn planning test ------'
-        return self._run_plan_or_replay(start_track=250, args=args)
+        args[START_TRACK] = 250
+        return self._run_plan_or_replay(args=args)
 
     def _planning_whole_track_no_right_turns_test(self, args):
         args[TEST_NAME] = '----- Whole track (No right turns) planning test ------'
-        return self._run_plan_or_replay(start_track=1, args=args)
+        args[START_TRACK] = 1
+        return self._run_plan_or_replay(args=args)
 
     def _planning_whole_random_track_test(self, args):
         args[TEST_NAME] = '----- Whole random track planning test ------'
-        return self._run_plan_or_replay(start_track=1, args=args)
+        args[START_TRACK] = 1
+        return self._run_plan_or_replay(args=args)
 
     # ######################################################
 
-    def _run_plan_or_replay(self, start_track, args):
-        print(args[TEST_NAME])
-        if ACTION_HISTORY in args:
-            return self._replay_planning_test(start_track, args)
-        else:
-            return self._run_planning_test(start_track, args)
+    def _run_trial(self, trial_i, args, seed):
+        current_state = self.environment.reset(seed)
+        seed = self.environment.seed
 
-    def _run_planning_test(self, start_track, args):
-        trial_actions = []
-        trial_rewards = []
-        trial_max_rewards = []
-        trial_elites = []
+        if args[CUSTOM_SEED] is not None:
+            self._set_car_position(args[START_TRACK])
 
-        seed = args[CUSTOM_SEED]
+        self.simulated_environment.reset()
+        latent_state, _ = self._encode_state(current_state)
+        hidden_state = self.simulated_environment.get_hidden_zeros_state()
 
-        for i in range(self.trials):
-            self.environment.reset(seed)
-            seed = self.environment.seed
-            if args[CUSTOM_SEED] is not None:
-                self._set_car_position(start_track)
-            current_state = self._skip_zoom()
+        trial_results_dto = self._get_trial_results_dto(args)
+        elites = []
+        action_history = []
+        start_time = time.time()
+        total_reward = 0
+        steps_ran = 0
+        elapsed_time = 0
 
-            self.simulated_environment.reset()
-            latent_state, _ = self._encode_state(current_state)
-            hidden_state = self.simulated_environment.get_hidden_zeros_state()
+        negative_counter = 0
+        is_done = False
+        for step in range(args['optimal_steps'] + 75):
+            action, step_elites = self._search_action(latent_state, hidden_state)
+            elites.append(step_elites)
 
-            trial_results_dto = self._get_trial_results_dto(args)
-            elites = []
-            action_history = []
-            start_time = time.time()
-            total_reward = 0
-            steps_ran = 0
-            elapsed_time = 0
+            self._render_fitness_and_trajory(current_state, step_elites)
 
-            for step in range(args['optimal_steps']+75):
-                if self.config['planning']['planning_agent'] == "MCTS":
-                    action = self.planning_agent.search(self.simulated_environment, latent_state, hidden_state)
-                else:
-                    action, step_elites = self.planning_agent.search(self.simulated_environment, latent_state, hidden_state)
-                    elites.append(step_elites)
-                    if self.is_render:
-                        if self.is_render_fitness:
-                            self.visualizer.show_fitness_plot(self.planning_agent.max_generations, step_elites, self.config['planning']['planning_agent'])
-                        if self.is_render_trajectory:
-                            self.visualizer.show_trajectory_plot(current_state, step_elites, self.config['planning']['planning_agent'], self.environment.environment, self.is_render_best_elite_only)
+            self._simulate_dream(self.planning_agent.current_elite.action_sequence, current_state, hidden_state)
 
-                if self.is_render_dream:
-                    self._step_sequence_in_dream(self.planning_agent.current_elite.action_sequence, current_state, hidden_state)
+            if is_done or negative_counter == self.config['test_suite']['car_racing']['max_negative_count']:
+                break
 
-                current_state, reward, is_done, simulated_reward, simulated_is_done, latent_state, hidden_state = self._step(action, hidden_state)
-                action_history.append(action)
-                total_reward += reward
-                steps_ran += 1
-                elapsed_time = time.time() - start_time
-                self._update_trial_results(trial_results_dto, reward, total_reward, steps_ran)
+            current_state, reward, is_done, simulated_reward, simulated_is_done, latent_state, hidden_state = \
+                self._step(action, hidden_state)
 
-            trial_elites.append(elites)
-            trial_actions.append(action_history)
-            trial_rewards.append(total_reward)
-            trial_max_rewards.append(trial_results_dto['max_reward'])
+            negative_counter = 0 if reward > 0 else negative_counter + 1
+            action_history.append(action)
+            total_reward += reward
+            steps_ran += 1
+            elapsed_time = time.time() - start_time
+            self._update_trial_results(trial_results_dto, reward, total_reward, steps_ran)
 
-            self._print_trial_results(i, elapsed_time, total_reward, steps_ran, trial_results_dto)
+        self._print_trial_results(trial_i, elapsed_time, total_reward, steps_ran, trial_results_dto)
+        return elites, action_history, total_reward, trial_results_dto['max_reward'], seed
 
-        return trial_actions, trial_rewards, trial_elites, trial_max_rewards, seed
-
-    def _replay_planning_test(self, start_track, args):
+    def _replay_planning_test(self, args):
         actions = args[ACTION_HISTORY]
         elites = args[ELITES]
         seed = args[CUSTOM_SEED]
@@ -148,8 +123,7 @@ class PlanningTester(BasePlanningTester):
         _ = self.environment.reset(seed=seed)
         self.simulated_environment.reset()
         hidden_state = self.simulated_environment.get_hidden_zeros_state()
-        self._set_car_position(start_track)
-        self._skip_zoom()
+        self._set_car_position(args[START_TRACK])
 
         trial_results_dto = self._get_trial_results_dto(args)
 
@@ -162,30 +136,26 @@ class PlanningTester(BasePlanningTester):
             total_reward += reward
             self._update_trial_results(trial_results_dto, reward, total_reward, steps_ran)
 
-            if elites and self.is_render:
-                if self.is_render_trajectory:
-                    self.visualizer.show_trajectory_plot(current_state, elites[i], self.config['planning']['planning_agent'], self.environment.environment, self.is_render_best_elite_only)
-
-                if self.is_render_fitness:
-                    self.visualizer.show_fitness_plot(len(elites[i])-1, elites[i], self.config['planning']['planning_agent'])
-
-                if self.is_render_dream:
-                    self._step_sequence_in_dream(elites[i][-1][2], current_state, hidden_state)
+            if elites:
+                self._render_fitness_and_trajory(step_elites=elites[i], current_state=current_state)
+                self._simulate_dream(elites[i][-1][2], current_state, hidden_state)
 
         self._print_trial_results(None, None, total_reward, steps_ran, trial_results_dto)
 
         return actions, total_reward
 
-    def _step_sequence_in_dream(self, actions, current_state, hidden):
-        latent, _ = self._encode_state(current_state)
-        total_reward = 0
+    def _render_fitness_and_trajory(self, current_state, step_elites):
+        if self.is_render_fitness:
+            self.visualizer.show_fitness_plot(max_generations=len(step_elites)-1, elites=step_elites, agent=self.config['planning']['planning_agent'])
 
-        for action in actions:
-            latent, simulated_reward, simulated_is_done, hidden = self.simulated_environment.step(
-                self._get_action(action), hidden, latent, is_simulation_real_environment=True)
-            total_reward += simulated_reward
-            self.simulated_environment.render()
-        return total_reward
+        if self.is_render_trajectory:
+            self.visualizer.show_trajectory_plot(current_state, step_elites, self.config['planning']['planning_agent'],
+                                                 self.environment.environment, self.is_render_best_elite_only)
+
+    def _simulate_dream(self, action_sequence, current_state, hidden_state):
+        action_sequence = [self._get_action(action) for action in action_sequence]
+        if self.is_render_dream:
+            self._step_sequence_in_dream(action_sequence, current_state, hidden_state)
 
     def _get_action(self, action):
         return action[0] if type(action) == tuple and len(action) == 2 else action
@@ -194,30 +164,20 @@ class PlanningTester(BasePlanningTester):
         self.environment.environment.env.car = Car(self.environment.environment.env.world,
                                                    *self.environment.environment.env.track[start_track][1:4])
 
-    def _skip_zoom(self):
-        state = None
-        for _ in range(50):
-            state, _, _, _ = self.environment.step([0, 0, 0])
-        self.environment.render()
-        return state
-
     def _reward_diff_percentage(self, actual, control):
         return round((actual-control) / 100) if abs(actual) == 0 else round((actual-control) / abs(actual) * 100)
 
     def _get_trial_results_dto(self, args):
-        return {
-            'test_name': args[TEST_NAME],
-            'reward_at_optimum_steps': 0,
-            'reward_at_success': 0,
-            'steps_at_success': 0,
-            'tiles': 0,
-            'test_success': False,
-            'max_reward': 0,
-            OPTIMAL_STEPS: args[OPTIMAL_STEPS],
-            OPTIMAL_REWARD: args[OPTIMAL_REWARD],
-            RANDOM_REWARD: args[RANDOM_REWARD],
-            'tiles_to_complete': args[TILES_TO_COMPLETE]
-        }
+        base_dto = super(PlanningTester, self)._get_trial_results_dto(args)
+        base_dto['reward_at_success'] = 0
+        base_dto['steps_at_success'] = 0
+        base_dto['tiles'] = 0
+        base_dto[OPTIMAL_STEPS] = args[OPTIMAL_STEPS]
+        base_dto[OPTIMAL_REWARD] = args[OPTIMAL_REWARD]
+        base_dto[RANDOM_REWARD] = args[RANDOM_REWARD]
+        base_dto[TILES_TO_COMPLETE] = args[TILES_TO_COMPLETE]
+        base_dto['reward_at_optimum_steps'] = 0
+        return base_dto
 
     def _update_trial_results(self, trial_results_dto, reward, total_reward, steps_ran):
         tiles = trial_results_dto['tiles']

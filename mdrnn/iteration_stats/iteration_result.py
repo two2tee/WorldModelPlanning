@@ -3,15 +3,16 @@ import numpy as np
 
 class IterationResult:
     def __init__(self, iteration=0):
+        self.agent_name = ""
         self.iteration = iteration
         self.test_name = None
-        self.seed = None
+        self.trial_seeds = None
         self.total_trials = 0
         self.trials_max_rewards = []
         self.trials_rewards = []
         self.mdrnn_test_losses = {}
 
-    def get_average_reward(self):
+    def get_average_total_reward(self):
         return np.mean(self.trials_rewards) if len(self.trials_rewards) > 0 else 0
 
     def get_average_max_reward(self):
@@ -29,5 +30,6 @@ class IterationResult:
 
     def __str__(self) -> str:
         return f'\n\nIteration {self.iteration} | {self.mdrnn_test_losses} | total trials in test: {self.total_trials} ' \
-               f'| test name {self.test_name}' \
-               f'\navg max reward: {self.get_average_max_reward()} | avg reward: {self.get_average_reward()}\n\n'
+               f'| test name {self.test_name} | agent: {self.agent_name}' \
+               f'\navg max reward: {self.get_average_max_reward()} | avg reward: {self.get_average_total_reward()}\n\n'
+

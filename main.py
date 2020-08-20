@@ -23,6 +23,7 @@ from planning.simulation.simulated_planning_controller import SimulatedPlanningC
 from planning.simulation.random_mutation_hill_climbing_simulation import RMHC as RMHC_simulation
 colorama_init()
 
+
 class Main:
     def __init__(self, config):
         self.config = config
@@ -67,7 +68,7 @@ class Main:
 
     def run_ntbea_tuning(self, vae, mdrnn):
         agent = self.get_planning_agent(self.config['planning']['planning_agent'])
-        planning_tester = get_model_tester(self.config, vae, mdrnn, self.frame_preprocessor, self.environment, agent)
+        planning_tester = get_planning_tester(self.config, vae, mdrnn, self.frame_preprocessor, self.environment, agent)
         ntbea_tuner = PlanningNTBEAWrapper(self.config, planning_tester)
         ntbea_tuner.run_ntbea()
 
@@ -126,4 +127,3 @@ if __name__ == '__main__':
 
     if config["is_play"]:
         main.play_game(vae, mdrnn)
-

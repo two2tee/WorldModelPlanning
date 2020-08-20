@@ -4,15 +4,17 @@ from concurrent.futures.process import ProcessPoolExecutor
 from pprint import pprint
 
 import torch
+import numpy as np
+import matplotlib.pyplot as plt
 from datetime import date
 from os.path import exists, join
 from torch import multiprocessing
 from tests.base_tester import BaseTester
-import matplotlib.pyplot as plt
-import numpy as np
+from utility.visualizer import Visualizer
 from planning.simulation.mcts_simulation import MCTS as MCTS_simulation
 from planning.simulation.rolling_horizon_simulation import RHEA as RHEA_simulation
 from planning.simulation.random_mutation_hill_climbing_simulation import RMHC as RMHC_simulation
+from tqdm import tqdm
 
 # ARGS KEYS PLANNING
 ACTION_HISTORY = 'action_history'
@@ -25,9 +27,11 @@ class BasePlanningTester(BaseTester):
     def __init__(self, config, vae, mdrnn, preprocessor, environment, planning_agent):
         super().__init__(config, vae, mdrnn, preprocessor, environment, trials=config["test_suite"]["trials"])
         self.is_ntbea_tuning = False
-        self.is_multithread = self.config['test_suite']['is_multithread']
+        self.is_multithread_tests = self.config['test_suite']['is_multithread_tests']
+        self.is_multithread_trials = self.config['test_suite']['is_multithread_trials']
         self.planning_agent = planning_agent
         self.planning_dir = join('tests', config['test_suite']['planning_test_log_dir'])
+        self.visualizer = Visualizer()
         self.is_render = config['visualization']['is_render']
         self.is_render_simulation = self.config['visualization']['is_render_simulation']
         self.is_render_dream = self.config['visualization']['is_render_dream']
@@ -39,18 +43,26 @@ class BasePlanningTester(BaseTester):
     def get_test_functions(self):
         return NotImplemented
 
-    def _get_trial_results_dto(self, args):
-        return NotImplemented
-
-    def _update_trial_results(self, trial_results_dto, reward, total_reward, steps_ran):
-        return NotImplemented
-
     def _print_trial_results(self, trial, elapsed_time, total_reward, steps_ran, trial_results_dto):
         return NotImplemented
 
+    def _run_trial(self, trial_i, args, seed):
+        return NotImplemented
+
+    def _replay_planning_test(self, args):
+        return NotImplemented
+
+
+    def _get_trial_results_dto(self, args):
+        return {
+            'test_name': args[TEST_NAME],
+            'test_success': False,
+            'max_reward': 0,
+        }
+
     def _run_new_session(self):
         print('\n--- RUNNING NEW PLANNING TESTS ---')
-        return self._run_multithread_new_test_session() if self.is_multithread and not self.is_render else \
+        return self._run_multithread_new_test_session() if self.is_multithread_tests and not self.is_render else \
             self._run_singlethread_new_test_session()
 
     def _restore_agent(self, agent_type, params):
@@ -77,20 +89,19 @@ class BasePlanningTester(BaseTester):
     def run_specific_test(self, test_name):
         with torch.no_grad():
             test_func, args = self.get_test_functions()[test_name]
-            trial_actions, trial_rewards, trial_elites, trial_max_rewards, seed = test_func(args=args)
+            trial_actions, trial_rewards, trial_elites, trial_max_rewards, trial_seeds = test_func(args=args)
             plt.close('all')
-            return test_name, trial_actions, trial_rewards, trial_elites, trial_max_rewards, seed
+            return test_name, trial_actions, trial_rewards, trial_elites, trial_max_rewards, trial_seeds
 
     def _run_multithread_new_test_session(self):
         with ProcessPoolExecutor(max_workers=multiprocessing.cpu_count()) as executor:
             tests = self.get_test_functions()
             thread_results = list(executor.map(self.run_specific_test, tests.keys()))
             test_results = {}
-            for test_name, trial_actions, trial_rewards, trial_elites, trial_max_rewards, seed in thread_results:
-                test_results[test_name] = (test_name, trial_actions, trial_rewards, trial_elites, seed)
+            for test_name, trial_actions, trial_rewards, trial_elites, trial_max_rewards, trial_seeds in thread_results:
+                test_results[test_name] = (test_name, trial_actions, trial_rewards, trial_elites, trial_seeds)
                 if len(trial_rewards) > 1:
-                    print(
-                        f'{self.config["planning"]["planning_agent"]} - {test_name} - Average reward over {len(trial_rewards)} trials: {np.mean(trial_rewards)}')
+                    print(f'{self.config["planning"]["planning_agent"]} - {test_name} - Average reward over {len(trial_rewards)} trials: {np.mean(trial_rewards)}')
             self._save_test_session(test_results)
             return self._get_session_total_best_reward(test_results)
 
@@ -100,12 +111,49 @@ class BasePlanningTester(BaseTester):
         with torch.no_grad():
             for test_name in tests.keys():
                 test_func, args = tests[test_name]
-                trial_actions, trial_rewards, trial_elites, trial_max_rewards, seed = test_func(args=args)
-                test_results[test_name] = (test_name, trial_actions, trial_rewards, trial_elites, seed)
+                trial_actions, trial_rewards, trial_elites, trial_max_rewards, trial_seeds = test_func(args=args)
+                test_results[test_name] = (test_name, trial_actions, trial_rewards, trial_elites, trial_seeds)
                 print(f'Average reward over {len(trial_rewards)} trials: {np.mean(trial_rewards)}')
             self._save_test_session(test_results)
         plt.close('all')
         return self._get_session_total_best_reward(test_results)
+
+    def _run_plan_or_replay(self, args):
+        print(args[TEST_NAME])
+        if ACTION_HISTORY in args:
+            return self._replay_planning_test(args)
+        else:
+            return self._run_planning_test(args)
+
+    def _run_planning_test(self, args):
+        trial_actions = []
+        trial_rewards = []
+        trial_max_rewards = []
+        trial_elites = []
+        trial_seeds = []
+        seed = args[CUSTOM_SEED]
+
+        if self.is_multithread_trials:
+            return NotImplemented # TODO FIX
+            with ProcessPoolExecutor(max_workers=multiprocessing.cpu_count()) as executor:
+                func_input = [(trial_i, args, seed) for trial_i in range(self.trials)]
+                thread_results = list(executor.map(self._run_trial, func_input))
+                for elites, action_history, total_reward, max_reward, seed in thread_results:
+                    trial_actions.append(action_history)
+                    trial_rewards.append(total_reward)
+                    trial_max_rewards.append(max_reward)
+                    trial_elites.append(elites)
+                    trial_seeds.append(seed)
+        else:
+            for i in tqdm(range(self.trials), desc=f'Planning Test on {args[TEST_NAME]} with {self.trials} trials'):
+                elites, action_history, total_reward, max_reward, seed = self._run_trial(i, args, seed)
+                trial_actions.append(action_history)
+                trial_rewards.append(total_reward)
+                trial_max_rewards.append(max_reward)
+                trial_elites.append(elites)
+                trial_seeds.append(seed)
+
+        return trial_actions, trial_rewards, trial_elites, trial_max_rewards, trial_seeds
 
     def _run_cached_session(self):
         print('--- RUNNING CACHED PLANNING TESTS ---')
@@ -126,6 +174,15 @@ class BasePlanningTester(BaseTester):
         print(f'Total session reward: {session_reward}')
         return self._get_session_total_best_reward(session)
 
+    def _search_action(self, latent_state, hidden_state):
+        if self.config['planning']['planning_agent'] == "MCTS":
+            action = self.planning_agent.search(self.simulated_environment, latent_state, hidden_state)
+            step_elites = []
+        else:
+            action, step_elites = self.planning_agent.search(self.simulated_environment, latent_state, hidden_state)
+
+        return action, step_elites
+
     def _step(self, action, hidden_state):
         current_state, reward, is_done, _ = self.environment.step(action)
         latent_state, _ = self._encode_state(current_state)
@@ -135,8 +192,24 @@ class BasePlanningTester(BaseTester):
                                                                                                           is_simulation_real_environment=True)
         if self.is_render_simulation:
             self.simulated_environment.render()
-        self.environment.render()
+
+        if self.is_render:
+            self.environment.render()
+
         return current_state, reward, is_done, simulated_reward, simulated_is_done, latent_state, hidden_state
+
+    def _step_sequence_in_dream(self, actions, current_state, hidden):
+        latent, _ = self._encode_state(current_state)
+        total_reward = 0
+
+        for action in actions:
+            latent, simulated_reward, simulated_is_done, hidden = self.simulated_environment.step(action, hidden,
+                                                                                                  latent,
+                                                                                                  is_simulation_real_environment=True)
+            total_reward += simulated_reward
+            self.simulated_environment.render()
+        print(total_reward)
+        return total_reward
 
     def _save_test_session(self, test_results):
         save_data = {
@@ -187,11 +260,11 @@ class BasePlanningTester(BaseTester):
         return total_reward
 
     def _get_best_trial_action_and_reward(self, test_result):
-        seed = None
+        trial_seeds = None
         if len(test_result) is 5:
-            test_name, trial_actions, trial_rewards, trial_elites, seed = test_result
+            test_name, trial_actions, trial_rewards, trial_elites, trial_seeds = test_result
         else:
             test_name, trial_actions, trial_rewards, trial_elites = test_result
 
         index_max = np.argmax(trial_rewards)
-        return index_max+1, trial_actions[index_max], trial_rewards[index_max], trial_elites[index_max], seed
+        return index_max+1, trial_actions[index_max], trial_rewards[index_max], trial_elites[index_max], trial_seeds[index_max] if trial_seeds else None
