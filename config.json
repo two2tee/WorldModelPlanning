@@ -4,7 +4,7 @@
     "forced_vae": "World_Model_A",
     "latent_size": 64,
     "num_reconstructions": 64,
-    "is_generate_data": false,
+    "is_generate_data": true,
     "is_train_vae": false,
     "is_train_mdrnn": false,
     "is_iterative_train_mdrnn": false,
@@ -61,7 +61,7 @@
     },
     "data_generator": {
         "data_prefix": "",
-        "rollouts": 10000,
+        "rollouts": 32,
         "sequence_length": 500,
         "data_output_dir": "data",
         "car_racing": {

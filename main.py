@@ -23,6 +23,7 @@ from planning.simulation.simulated_planning_controller import SimulatedPlanningC
 from planning.simulation.random_mutation_hill_climbing_simulation import RMHC as RMHC_simulation
 colorama_init()
 
+
 class Main:
     def __init__(self, config):
         self.config = config
