@@ -29,8 +29,6 @@ class BaseEnvironment:
         self._is_done = False
 
     def render(self):
-        if self._is_done:
-            raise Exception('Cannot render since game is done. Please call reset.')
         self.environment.render()
 
     def sample(self):
