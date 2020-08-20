@@ -37,7 +37,7 @@ class RolloutGenerator(BaseRolloutGenerator):
         environment.reset()
 
         # Worse total reward by randomizing car position
-        car_position = np.random.randint(len(environment.track))
+        car_position = np.random.randint(len(environment.environment.track))
         environment.environment.car = Car(environment.environment.world, *environment.environment.track[car_position][1:4])
 
         # Garbage collection of events in viewer
