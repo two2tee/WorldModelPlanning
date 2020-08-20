@@ -3,6 +3,7 @@ import numpy as np
 
 class IterationResult:
     def __init__(self, iteration=0):
+        self.agent_name = ""
         self.iteration = iteration
         self.test_name = None
         self.trial_seeds = None
@@ -29,5 +30,6 @@ class IterationResult:
 
     def __str__(self) -> str:
         return f'\n\nIteration {self.iteration} | {self.mdrnn_test_losses} | total trials in test: {self.total_trials} ' \
-               f'| test name {self.test_name}' \
+               f'| test name {self.test_name} | agent: {self.agent_name}' \
                f'\navg max reward: {self.get_average_max_reward()} | avg reward: {self.get_average_total_reward()}\n\n'
+

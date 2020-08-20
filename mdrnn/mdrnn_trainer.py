@@ -185,7 +185,7 @@ class MDRNNTrainer:
 
         self.train_loader = DataLoader(dataset=train_dataset,
                                        batch_size=self.config['mdrnn_trainer']['batch_size'],
-                                       num_workers=self.num_workers, shuffle=True)
+                                       num_workers=self.num_workers, shuffle=True, drop_last=True)
 
         test_dataset = self._create_dataset(data_location=self.test_data_dir if self.is_use_specific_test_data else self.data_dir,
                                             buffer_size=self.config['mdrnn_trainer']['test_buffer_size'],
@@ -194,7 +194,7 @@ class MDRNNTrainer:
 
         self.test_loader = DataLoader(dataset=test_dataset,
                                       batch_size=self.config['mdrnn_trainer']['batch_size'],
-                                      num_workers=self.num_workers, shuffle=False)
+                                      num_workers=self.num_workers, shuffle=False, drop_last=True)
 
     def _create_dataset(self, data_location, buffer_size, file_ratio, is_train):
         dataset = RolloutSequenceDataset(root=data_location,
@@ -251,20 +251,18 @@ class MDRNNTrainer:
             loader = self.test_loader
 
         loader.dataset.load_next_buffer()
-
         cum_loss = 0
         cum_gmm = 0
         cum_bce = 0
         cum_mse = 0
 
         progress_bar = tqdm(total=len(loader.dataset) if len(loader.dataset) >= 0 else 1, desc=f"{'Train' if is_train else 'Test'} Epoch {epoch}")
-        for i, data in enumerate(loader):
-            obs, action, reward, terminal, next_obs = [arr.to(self.device) for arr in data]
-
-            if obs.shape[0] is not self.batch_size:  # TODO figure why bad data and remove this edge case code
-                print('Skipped bad data')
-                progress_bar.update(self.batch_size)
-                continue
+        for i, batch in enumerate(loader):
+            obs, action, reward, terminal, next_obs = [arr.to(self.device) for arr in batch]
+            # if obs.shape[0] is not self.batch_size:
+            #     print(f'Skipped bad batch - Batch size was {obs.shape[0]} but expected {self.batch_size}')
+            #     progress_bar.update(self.batch_size)
+            #     continue
 
             # transform obs to latent states
             latent_obs, latent_next_obs = self._to_latent(obs, next_obs)

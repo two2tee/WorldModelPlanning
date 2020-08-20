@@ -147,6 +147,7 @@ class IterativeTrainer:
         environment.close()
 
         iteration_result = iteration_results[iteration]
+        iteration_result.agent_name = self.config['planning']['planning_agent']
         iteration_result.test_name = test_name
         iteration_result.trial_seeds = trial_seeds
         iteration_result.total_trials = len(trial_max_rewards)
@@ -202,9 +203,9 @@ class IterativeTrainer:
         self.test_lock.acquire()
         try:
             logger = TensorboardHandler(is_logging=True)
-            logger.start_log(name=f'{self.config["experiment_name"]}_iterative_planning_test_results')
+            logger.start_log(name=f'{iteration_result.agent_name}_{self.config["experiment_name"]}_iterative_planning_test_results')
 
-            title = f'Iterative_Planning_Tests_Results_{iteration_result.test_name}_trials_{iteration_result.total_trials}'
+            title = f'{iteration_result.test_name}_trials_{iteration_result.total_trials}'
             logger.log_iteration_max_reward(name=title,
                                                  iteration=iteration_result.iteration, max_reward=iteration_result.get_average_max_reward())
             logger.log_iteration_avg_reward(name=title,
