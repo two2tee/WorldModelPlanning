@@ -151,6 +151,7 @@ class MDRNNTrainer:
                 torch.cuda.set_device(2)
             print(f'Cuda current device: {torch.cuda.current_device()}')
             return torch.device('cuda')
+        print(f'Using CPU - Since no GPU was found or GPU driver outdated - ')
         return torch.device('cpu')
 
     def _reload_training_session(self):
