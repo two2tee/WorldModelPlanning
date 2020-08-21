@@ -90,12 +90,12 @@ class MDRNNTrainer:
 
         self.is_iterative = self.config["is_iterative_train_mdrnn"] and not self.config["is_train_mdrnn"]
 
-    def train(self, vae, mdrnn, data_dir=None, max_epochs=None, seq_len=None, iteration=None):
+    def train(self, vae, mdrnn, data_dir=None, max_epochs=None, seq_len=None, iteration=None, max_size=0, random_sampling=False):
         self.sequence_length = self.config['mdrnn_trainer']['sequence_length'] if seq_len is None else seq_len
         self.data_dir = self.data_dir if data_dir is None else data_dir
         self.vae = vae.to(self.device)
         self.mdrnn = mdrnn.to(self.device)
-        self._load_data()
+        self._load_data(max_size, is_random_sampling=True)
         self.logger.start_log_training_minimal(name=f'{self.session_name}{f"_iteration_{iteration}" if self.is_iterative else ""}')
         self.optimizer = optim.Adam(self.mdrnn.parameters(), lr=self.config['mdrnn_trainer']['learning_rate'])
         self.scheduler = ReduceLROnPlateau(self.optimizer, 'min', factor=0.5, patience=5)
@@ -179,32 +179,42 @@ class MDRNNTrainer:
         print('No mdrnn found. Skip reloading...')
         return 0, None  # start epoch
 
-    def _load_data(self):  # To avoid loading data when not training
-        train_dataset = self._create_dataset(data_location=self.data_dir,
-                                             buffer_size=self.config['mdrnn_trainer']['train_buffer_size'],
-                                             file_ratio=self.config['mdrnn_trainer']['train_test_files_ratio'],
-                                             is_train=True)
-
-        self.train_loader = DataLoader(dataset=train_dataset,
-                                       batch_size=self.config['mdrnn_trainer']['batch_size'],
-                                       num_workers=self.num_workers, shuffle=True, drop_last=True)
-
+    def _load_data(self, max_size=0, is_random_sampling=False):  # To avoid loading data when not training
         test_dataset = self._create_dataset(data_location=self.test_data_dir if self.is_use_specific_test_data else self.data_dir,
                                             buffer_size=self.config['mdrnn_trainer']['test_buffer_size'],
                                             file_ratio=self.config['mdrnn_trainer']['train_test_files_ratio'],
-                                            is_train=False)
+                                            is_train=False,
+                                            is_same_testdata=self.is_use_specific_test_data,
+                                            max_size=max_size,
+                                            is_random_sampling=is_random_sampling
+                                            )
 
         self.test_loader = DataLoader(dataset=test_dataset,
                                       batch_size=self.config['mdrnn_trainer']['batch_size'],
                                       num_workers=self.num_workers, shuffle=False, drop_last=True)
 
-    def _create_dataset(self, data_location, buffer_size, file_ratio, is_train):
+        train_dataset = self._create_dataset(data_location=self.data_dir,
+                                             buffer_size=self.config['mdrnn_trainer']['train_buffer_size'],
+                                             file_ratio=self.config['mdrnn_trainer']['train_test_files_ratio'],
+                                             is_train=True,
+                                             is_same_testdata=self.is_use_specific_test_data,
+                                             max_size=max_size,
+                                             is_random_sampling=is_random_sampling
+                                             )
+
+        self.train_loader = DataLoader(dataset=train_dataset,
+                                       batch_size=self.config['mdrnn_trainer']['batch_size'],
+                                       num_workers=self.num_workers, shuffle=True, drop_last=True)
+
+    def _create_dataset(self, data_location, buffer_size, file_ratio, is_train,is_same_testdata, max_size=0, is_random_sampling=False):
         dataset = RolloutSequenceDataset(root=data_location,
                                       seq_len=self.sequence_length,
                                       transform=transform,
                                       is_train=is_train,
+                                      is_same_testdata=is_same_testdata,
                                       buffer_size=buffer_size,
-                                      file_ratio=file_ratio)
+                                      file_ratio=file_ratio,
+                                      max_size=max_size, is_random_sampling=is_random_sampling)
         if len(dataset._files) == 0:
             raise Exception(f'No files found in {data_location}')
         return dataset

@@ -57,6 +57,9 @@ class IterativeTrainer:
         self.iteration_stats_dir = join(self.config['mdrnn_dir'], 'iteration_stats')
         self.is_random_policy_not_planning = config["iterative_trainer"]["is_random_policy_not_planning"]
         self.max_test_threads = config["iterative_trainer"]["max_test_threads"]
+        self.is_replay_buffer = config["iterative_trainer"]["replay_buffer"]['is_replay_buffer']
+        self.max_buffer_size = config["iterative_trainer"]["replay_buffer"]['max_buffer_size']
+        self.replay_buffer_count = self._get_replay_buffer_size()
         self.test_lock = Lock()
 
 
@@ -103,7 +106,16 @@ class IterativeTrainer:
             [thread.get() for thread in threads]
             pool.close()
 
+        if self.is_replay_buffer:
+            self._set_replay_buffer_count()
+
         print(f'Done - {self.num_rollouts} rollouts saved in {self.data_dir}')
+
+    def _set_replay_buffer_count(self):
+        self.replay_buffer_count = 0 if self.replay_buffer_count >= self.max_buffer_size else self.replay_buffer_count + self.num_rollouts
+
+    def _get_replay_buffer_size(self):
+        return len([name for root, dirs, files in os.walk(self.data_dir) for name in files])
 
     def _get_rollout_batch(self, num_rollouts_per_thread, thread_id, iteration, vae, mdrnn):  # SLOW
         environment = get_environment(self.config)
@@ -132,7 +144,8 @@ class IterativeTrainer:
     def _train_thread(self, iteration, iteration_results):
         vae, mdrnn = self._get_vae_mdrnn()
         _, test_losses = self.mdrnn_trainer.train(vae, mdrnn, data_dir=self.data_dir, max_epochs=self.max_epochs,
-                                                  seq_len=self.sequence_length, iteration=iteration)
+                                                  seq_len=self.sequence_length, iteration=iteration,
+                                                  max_size=self.num_rollouts, random_sampling=self.is_replay_buffer)
         iteration_result = iteration_results[iteration]
         iteration_result.mdrnn_test_losses = test_losses
         iteration_results[iteration] = iteration_result
@@ -187,7 +200,7 @@ class IterativeTrainer:
         return actions, states, rewards, terminals
 
     def _save_rollout(self, thread_id, rollout_number, actions, states, rewards, terminals):
-        file_name = f'iterative_thread_{thread_id}_resized_rollout_{rollout_number}'
+        file_name = f'iterative_thread_{thread_id}_resized_rollout_{rollout_number}_{self.replay_buffer_count if self.replay_buffer_count else ""}'
         np.savez_compressed(file=join(self.data_dir, file_name),
                             observations=np.array(states),
                             rewards=np.array(rewards),
