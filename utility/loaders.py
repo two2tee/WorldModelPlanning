@@ -2,22 +2,32 @@
 
 from bisect import bisect
 import os
-# import random
+import random
 import numpy as np
 import torch.utils.data
 from tqdm import tqdm
 
 
-# TODO: pretrained RL agent rollouts for testing only (later use planning rollouts only to split)
-# TODO: 80/20 train test ratio?, shuffle or not?
+
 # Original code by Ctallec: https://github.com/ctallec/world-models/blob/master/data/loaders.py
 class _RolloutDataset(torch.utils.data.Dataset):
-    def __init__(self, root, transform, buffer_size=100, is_train=True, file_ratio=0.5):
+    CURRENT_TESTDATA = set()
+
+    def __init__(self, root, transform, buffer_size=100, is_train=True, is_same_testdata=False, file_ratio=0.5, max_size=0, is_random_sampling=False):
+        self.is_same_testdata = is_same_testdata
         self._transform = transform
         self._files = [os.path.join(root, name) for root, dirs, files in os.walk(root) for name in files]
 
-        # self._files = self._files[:-total_num_files] if is_train else self._files[-total_num_files:]
-        self._files = self.take_x_ratio_files(is_train, file_ratio)
+        if is_same_testdata and len(_RolloutDataset.CURRENT_TESTDATA):
+            self._take_last_as_test(self._files, max_size, file_ratio) # TODO Since we use HA data for initial tests we want to always use same tests here and never random rollouts in ha
+        elif not is_train and not is_same_testdata:
+            self._clear_test_data()
+
+        self._files = self._random_sampling(self._files, max_size, is_train, file_ratio) if is_random_sampling else \
+                      self._standard_sampling(self._files, max_size, is_train, file_ratio)
+
+        if not is_train:
+            self._set_current_testdata(self._files)
 
         self._buffer_index = 0
         self._buffer_size = buffer_size
@@ -26,10 +36,45 @@ class _RolloutDataset(torch.utils.data.Dataset):
         if len(self._files) < self._buffer_size:
             raise Exception(f"Too low number of files {len(self._files)} with larger buffer of size: {self._buffer_size}")
 
-    def take_x_ratio_files(self, is_train, ratio):
-        to_take_train = int(len(self._files) * ratio)
-        to_take_test = len(self._files) - to_take_train
-        return self._files[:-to_take_train] if is_train else self._files[-to_take_test:]
+    def _standard_sampling(self, files, max_size, is_train, file_ratio):
+        files_to_take = max_size if len(files) >= max_size > 0 else len(files)
+        files = files[:files_to_take] if max_size > 0 else files
+        train_ratio, test_ratio = self._calc_file_ratio(len(files), file_ratio)
+        return files[:train_ratio] if is_train else files[-test_ratio:]
+
+    def _random_sampling(self, files, max_size, is_train, file_ratio):
+        files_to_take = max_size if len(files) >= max_size > 0 else len(files)
+        train_ratio, test_ratio = self._calc_file_ratio(files_to_take, file_ratio)
+        files_to_take = train_ratio if is_train else test_ratio
+        sampled_files = []
+
+        while len(sampled_files) < files_to_take:
+            potential_file = random.choice(files)
+            if potential_file not in _RolloutDataset.CURRENT_TESTDATA and potential_file not in sampled_files:
+                sampled_files.append(potential_file)
+        return sampled_files
+
+
+    def _take_last_as_test(self, files, max_size, file_ratio):
+        files_to_take = max_size if len(files) >= max_size > 0 else len(files)
+        train_ratio, test_ratio = self._calc_file_ratio(files_to_take, file_ratio)
+        return files[-test_ratio:]
+
+    def _set_current_testdata(self, files):
+        if self.is_same_testdata and len(_RolloutDataset.CURRENT_TESTDATA) > 0:
+            return
+
+        self._clear_test_data()
+        for file in files:
+            _RolloutDataset.CURRENT_TESTDATA.add(file)
+
+    def _clear_test_data(self):
+        _RolloutDataset.CURRENT_TESTDATA = set()
+
+    def _calc_file_ratio(self, num_files, file_ratio):
+        train_ratio = int(num_files * file_ratio)
+        test_ratio = num_files - train_ratio
+        return train_ratio, test_ratio
 
     def load_next_buffer(self):
         """ Loads next buffer """
@@ -97,8 +142,9 @@ class RolloutSequenceDataset(_RolloutDataset):
     :args transform: transformation of the observations
     :args train: if True, train data_random_car, else test
     """
-    def __init__(self, root, seq_len, transform, buffer_size=100, is_train=True, file_ratio=0.5):
-        super().__init__(root, transform, buffer_size, is_train, file_ratio)
+    def __init__(self, root, seq_len, transform, buffer_size=100, is_train=True, is_same_testdata=False, file_ratio=0.5,
+                       max_size=0, is_random_sampling=False):
+        super().__init__(root, transform, buffer_size, is_train, is_same_testdata, file_ratio, max_size, is_random_sampling)
         self._seq_len = seq_len
 
     def _get_data(self, data, seq_index):

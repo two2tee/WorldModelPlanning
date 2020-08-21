@@ -167,7 +167,7 @@
         "mdrnn_best_filename": "mdrnn_best.tar",
         "mdrnn_checkpoint_filename": "mdrnn_checkpoint.tar"
     },
-    "iterative_trainer":{
+    "iterative_trainer": {
         "iterative_data_dir": "data_iterative",
         "sequence_length": 250,
         "num_rollouts": 2000,
@@ -176,7 +176,11 @@
         "test_scenario": "planning_whole_random_track",
         "is_random_policy_not_planning": false,
         "fixed_cpu_cores": null,
-        "max_test_threads": 3
+        "max_test_threads": 3,
+        "replay_buffer": {
+            "is_replay_buffer": false,
+            "max_buffer_size": 10000
+        }
     },
     "real_environment": {
         "car_racing": {
