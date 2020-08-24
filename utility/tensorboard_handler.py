@@ -36,23 +36,51 @@ class TensorboardHandler:
         self.start_log(name)
         self.start_time = time.time()
 
-    def log_average_loss(self, name, loss, epoch, is_train):
+    def log_average_loss_per_epoch(self, name, loss, epoch, is_train):
         if not self.is_logging:
             return
-        title = f"{name} - Average Total Loss"
+        title = f"{name} - Average Total Loss/per_epoch"
         self.log_train_test(title, loss, epoch, is_train)
 
-    def log_reward_loss(self, name, loss, epoch, is_train):
-        title = f"{name} - Reward MSE Loss"
+    def log_reward_loss_per_epoch(self, name, loss, epoch, is_train):
+        title = f"{name} - Reward MSE Loss/per_epoch"
         self.log_train_test(title, loss, epoch, is_train)
 
-    def log_terminal_loss(self, name, loss, epoch, is_train):
-        title = f"{name} - Terminals BCE Loss"
+    def log_baseline_reward_loss_per_epoch(self, name, loss, epoch, is_train):
+        title = f"{name} - Reward Baseline MSE Loss/per_epoch"
         self.log_train_test(title, loss, epoch, is_train)
 
-    def log_next_latent_loss(self, name, loss, epoch, is_train):
-        title = f"{name} - GMM next latent Loss"
+    def log_terminal_loss_per_epoch(self, name, loss, epoch, is_train):
+        title = f"{name} - Terminals BCE Loss/per_epoch"
         self.log_train_test(title, loss, epoch, is_train)
+
+    def log_next_latent_loss_per_epoch(self, name, loss, epoch, is_train):
+        title = f"{name} - GMM next latent Loss/per_epoch"
+        self.log_train_test(title, loss, epoch, is_train)
+
+    def log_average_loss_per_batch(self, name, loss, batch, is_train):
+        title = f"{name} - Average Total Loss/per_batch"
+        self.log_train_test(title, loss, batch, is_train)
+
+    def log_reward_loss_per_batch(self, name, loss, batch, is_train):
+        title = f"{name} - Reward MSE Loss/per_batch"
+        self.log_train_test(title, loss, batch, is_train)
+
+    def log_baseline_reward_loss_per_batch(self, name, loss, batch, is_train):
+        title = f"{name} - Reward Baseline MSE Loss/per_batch"
+        self.log_train_test(title, loss, batch, is_train)
+
+    def log_reward_baseline_value(self, name, model, baseline_reward, num_files):
+        self._train_writer.add_text(tag=f'{name} - baseline_reward/{model}', text_string=f'Baseline reward: {baseline_reward}\n'
+                                                                                f'Reward count: {num_files}')
+
+    def log_terminal_loss_per_batch(self, name, loss, batch, is_train):
+        title = f"{name} - Terminals BCE Loss/per_batch"
+        self.log_train_test(title, loss, batch, is_train)
+
+    def log_next_latent_loss_per_batch(self, name, loss, batch, is_train):
+        title = f"{name} - GMM next latent Loss/per_batch"
+        self.log_train_test(title, loss, batch, is_train)
 
     def log_vae_reconstruction(self, images, epoch):
         if not self.is_logging:
