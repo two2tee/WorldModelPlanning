@@ -226,9 +226,8 @@ class MDRNNTrainer:
         return latent_obs, latent_next_obs
 
     def _get_loss(self, latent_obs, action, reward, terminal, latent_next_obs, include_reward: bool):
-        latent_obs, action, reward, terminal, latent_next_obs = [arr.transpose(1, 0)
-                                                                for arr in
-                                                                [latent_obs, action, reward, terminal, latent_next_obs]]
+        latent_obs, action, reward, terminal, latent_next_obs = [arr.transpose(1, 0) for arr in
+                                                                 [latent_obs, action, reward, terminal, latent_next_obs]]
         mus, sigmas, logpi, rs, ds, _ = self.mdrnn(action, latent_obs)
         gmm = gmm_loss(latent_next_obs, mus, sigmas, logpi)
         bce = f.binary_cross_entropy_with_logits(ds, terminal)
