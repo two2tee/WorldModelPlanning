@@ -72,7 +72,11 @@ class TensorboardHandler:
 
     def log_reward_baseline_value(self, name, model, baseline_reward, num_files):
         self._train_writer.add_text(tag=f'{name} - baseline_reward/{model}', text_string=f'Baseline reward: {baseline_reward}\n'
-                                                                                f'Reward count: {num_files}')
+                                                                                         f'Reward count: {num_files}\n')
+
+    def log_reward_baseline_losses(self, name, model, train_loss, test_loss):
+        self._train_writer.add_text(tag=f'{name} - baseline_reward/{model}', text_string=f'Baseline train loss: {train_loss}\n'
+                                                                                         f'Baseline test loss: {test_loss}')
 
     def log_terminal_loss_per_batch(self, name, loss, batch, is_train):
         title = f"{name} - Terminals BCE Loss/per_batch"
@@ -87,6 +91,23 @@ class TensorboardHandler:
             return
         grid = make_grid(images)
         self._train_writer.add_image(f'reconstruction_{epoch}', grid, 0)
+
+    def log_train_test(self, tag, loss, epoch, is_train):
+        if is_train:
+            self._train_writer.add_scalar(tag, loss, epoch)
+        else:
+            self._test_writer.add_scalar(tag, loss, epoch)
+
+    def log_iteration_max_reward(self, name, iteration, max_reward):
+        title = f"{name}/Average Max reward"
+        self._planning_test_writer.add_scalar(title, max_reward, iteration)
+
+    def log_iteration_avg_reward(self, name, iteration, avg_reward):
+        title = f"{name}/Average Total reward"
+        self._planning_test_writer.add_scalar(title, avg_reward, iteration)
+
+    # def log_standard_planning_test(self, test_name, agent, result):
+    #     self._planning_test_writer = SummaryWriter(log_dir=f'{self.log_dir_root}/planning_test/{name}')
 
     def end_log_training(self, name):
         if not self.is_logging:
@@ -114,16 +135,3 @@ class TensorboardHandler:
         self._planning_test_writer.close()
 
 
-    def log_train_test(self, tag, loss, epoch, is_train):
-        if is_train:
-            self._train_writer.add_scalar(tag, loss, epoch)
-        else:
-            self._test_writer.add_scalar(tag, loss, epoch)
-
-    def log_iteration_max_reward(self, name, iteration, max_reward):
-        title = f"{name}/Average Max reward"
-        self._planning_test_writer.add_scalar(title, max_reward, iteration)
-
-    def log_iteration_avg_reward(self, name, iteration, avg_reward):
-        title = f"{name}/Average Total reward"
-        self._planning_test_writer.add_scalar(title, avg_reward, iteration)

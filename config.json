@@ -164,6 +164,7 @@
         "train_test_files_ratio": 0.8,
         "num_workers": 0,
         "is_continue_model": true,
+        "is_baseline_reward_loss": true,
         "mdrnn_best_filename": "mdrnn_best.tar",
         "mdrnn_checkpoint_filename": "mdrnn_checkpoint.tar"
     },
