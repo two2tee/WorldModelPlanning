@@ -11,12 +11,12 @@
     "is_ntbea_param_tune": false,
     "is_play": false,
     "is_dream_play": false,
-    "is_manual_control": true,
+    "is_manual_control": false,
     "vae_dir": "vae",
     "mdrnn_dir": "mdrnn",
     "data_dir": "data",
     "test_data_dir": "data_test",
-    "is_use_specific_test_data": true,
+    "is_use_specific_test_data": false  ,
     "ntbea_tuning":{
         "is_reload_session": false,
         "session_name": "ntbea_session_World_Model_M_RHEA",
@@ -48,7 +48,7 @@
     },
     "test_suite": {
         "is_run_model_tests": false,
-        "is_run_planning_tests":  true,
+        "is_run_planning_tests":  false,
         "is_reload_planning_session": false,
         "trials": 30,
         "is_multithread_tests": false,
@@ -61,7 +61,7 @@
     },
     "data_generator": {
         "data_prefix": "",
-        "rollouts": 32,
+        "rollouts": 10000,
         "sequence_length": 500,
         "data_output_dir": "data",
         "car_racing": {
@@ -157,17 +157,18 @@
         "max_epochs": 20,
         "learning_rate": 0.001,
         "gradient_clip": 1.0,
-        "sequence_length": 250,
-        "batch_size": 16,
+        "sequence_length": 500,
+        "batch_size": 32,
         "train_buffer_size": 30,
         "test_buffer_size": 10,
         "train_test_files_ratio": 0.8,
         "num_workers": 0,
         "is_continue_model": true,
+        "is_baseline_reward_loss": true,
         "mdrnn_best_filename": "mdrnn_best.tar",
         "mdrnn_checkpoint_filename": "mdrnn_checkpoint.tar"
     },
-    "iterative_trainer":{
+    "iterative_trainer": {
         "iterative_data_dir": "data_iterative",
         "sequence_length": 250,
         "num_rollouts": 2000,
@@ -176,7 +177,11 @@
         "test_scenario": "planning_whole_random_track",
         "is_random_policy_not_planning": false,
         "fixed_cpu_cores": null,
-        "max_test_threads": 3
+        "max_test_threads": 3,
+        "replay_buffer": {
+            "is_replay_buffer": false,
+            "max_buffer_size": 10000
+        }
     },
     "real_environment": {
         "car_racing": {

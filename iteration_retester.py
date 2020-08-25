@@ -2,10 +2,10 @@
 # Run tests
 # Update Iterative stats
 # Update Tensorboard
+# TODO TEMPORARY ITERATIVE TEST RUNNER - WILL REMOVE WHEN DONE
 import json
 import os
 import pickle
-
 import torch
 import re
 
