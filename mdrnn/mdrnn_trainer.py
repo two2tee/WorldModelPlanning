@@ -12,6 +12,8 @@ import numpy as np
 import multiprocessing
 import torch.nn.functional as f
 from os import mkdir
+
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from tqdm import tqdm
 from torch import optim
 from functools import partial
@@ -19,7 +21,7 @@ from os.path import join, exists
 from torchvision import transforms
 from torch.distributions import Normal
 from torch.utils.data import DataLoader
-from mdrnn.learning import ReduceLROnPlateau
+# from mdrnn.learning import ReduceLROnPlateau
 from utility.loaders import RolloutSequenceDataset
 from mdrnn.learning import EarlyStopping
 
@@ -79,6 +81,8 @@ class MDRNNTrainer:
         self.batch_size = self.config["mdrnn_trainer"]["batch_size"]
         self.batch_train_idx = 0
         self.sequence_length = self.config["mdrnn_trainer"]["sequence_length"]
+        self.N_train_batch_until_test_batch = self.config['mdrnn_trainer']['N_train_batch_until_test_batch']
+        self.is_random_sampling = self.config['mdrnn_trainer']['is_random_sampling']
 
         self.baseline_test_loss, self.baseline_train_loss = 0, 0
 
@@ -94,18 +98,19 @@ class MDRNNTrainer:
 
         self.is_iterative = self.config["is_iterative_train_mdrnn"] and not self.config["is_train_mdrnn"]
 
-    def train(self, vae, mdrnn, data_dir=None, max_epochs=None, seq_len=None, iteration=None, max_size=0, random_sampling=False):
+    def train(self, vae, mdrnn, data_dir=None, max_epochs=None, seq_len=None, iteration=None, max_size=0, random_sampling=None):
         self.batch_train_idx = 0
         self.baseline_test_loss, self.baseline_train_loss = 0, 0
         self.sequence_length = self.config['mdrnn_trainer']['sequence_length'] if seq_len is None else seq_len
         self.data_dir = self.data_dir if data_dir is None else data_dir
+        self.is_random_sampling = self.is_random_sampling if random_sampling is None else random_sampling
         self.vae = vae.to(self.device)
         self.mdrnn = mdrnn.to(self.device)
-        self._load_data(max_size, is_random_sampling=random_sampling)
+        self._load_data(max_size, is_random_sampling=self.is_random_sampling)
         self.logger.start_log_training_minimal(name=f'{self.session_name}{f"_iteration_{iteration}" if self.is_iterative else ""}')
         self.optimizer = optim.Adam(self.mdrnn.parameters(), lr=self.config['mdrnn_trainer']['learning_rate'])
-        self.scheduler = ReduceLROnPlateau(self.optimizer, 'min', factor=0.5, patience=5)
-        self.earlystopping = EarlyStopping('min', patience=30)
+        self.scheduler = self._get_scheduler(self.optimizer)
+        self.earlystopping = EarlyStopping('min', patience=self.config['mdrnn_trainer']['early_stop_after_n_epochs'])
         train = partial(self._data_pass, is_train=True, include_reward=True)
         test = partial(self._data_pass, is_train=False, include_reward=True)
 
@@ -131,7 +136,9 @@ class MDRNNTrainer:
             is_best = not current_best or test_losses['average_loss'] < current_best
             current_best = test_losses['average_loss'] if is_best else current_best
 
-            self._save_checkpoint({'epoch': epoch, 'state_dict': self.mdrnn.state_dict(),
+            self._save_checkpoint({'epoch': epoch,
+                                   'batch_train_idx': self.batch_train_idx,
+                                   'state_dict': self.mdrnn.state_dict(),
                                    'precision': test_losses['average_loss'], 'optimizer': self.optimizer.state_dict(),
                                    'scheduler': self.scheduler.state_dict(),
                                    'earlystopping': self.earlystopping.state_dict()
@@ -155,16 +162,6 @@ class MDRNNTrainer:
         print(f'Reloaded MDRNN model - {state["epoch"]}')
         return mdrnn
 
-    def _set_device(self):
-        if torch.cuda.is_available():
-            if platform.system() == "Linux":
-                print("GPU enabled on Linux machine...")
-                torch.cuda.set_device(2)
-            print(f'Cuda current device: {torch.cuda.current_device()}')
-            return torch.device('cuda')
-        print(f'Using CPU - Since no GPU was found or GPU driver outdated - ')
-        return torch.device('cpu')
-
     def _reload_training_session(self):
         reload_file = join(self.model_dir, f"checkpoints/{'iterative_' if self.is_iterative else ''}{self.checkpoint_filename}")
         best_file = join(self.model_dir, f"checkpoints/{'iterative_' if self.is_iterative else ''}{self.best_mdrnn_filename}")
@@ -181,6 +178,7 @@ class MDRNNTrainer:
             else:
                 print(f"Reloading mdrnn at epoch {state['epoch']}")
 
+            self.batch_train_idx = state['batch_train_idx']
             self.mdrnn.load_state_dict(state["state_dict"])
             self.optimizer.load_state_dict(state["optimizer"])
             self.scheduler.load_state_dict(state['scheduler'])
@@ -189,6 +187,19 @@ class MDRNNTrainer:
             return epoch, best_test_loss
         print('No mdrnn found. Skip reloading...')
         return 0, None  # start epoch
+
+    def _save_checkpoint(self, state, is_best, iteration):
+        best_model_filename = join(self.model_dir, f"checkpoints/{'iterative_' if self.is_iterative else ''}{self.best_mdrnn_filename}")
+        checkpoint_filename = join(self.model_dir, f"checkpoints/{'iterative_' if self.is_iterative else ''}{self.checkpoint_filename}")
+
+        if self.is_iterative:  # For backup purpose
+            iteration_filename = join(self.backup_dir, f"iterative_{iteration}_{self.best_mdrnn_filename}")
+            torch.save(state, iteration_filename)
+
+        torch.save(state, checkpoint_filename)
+        if is_best or self.is_iterative:
+            torch.save(state, best_model_filename)
+            print(f'New best model found and saved')
 
     def _load_data(self, max_size=0, is_random_sampling=False):  # To avoid loading data when not training
         test_dataset = self._create_dataset(data_location=self.test_data_dir if self.is_use_specific_test_data else self.data_dir,
@@ -217,6 +228,23 @@ class MDRNNTrainer:
                                        batch_size=self.config['mdrnn_trainer']['batch_size'],
                                        num_workers=self.num_workers, shuffle=True, drop_last=True)
 
+    def _get_scheduler(self, optimizer):
+        return ReduceLROnPlateau(optimizer,
+                                 mode=self.config['mdrnn_trainer']['ReduceLROnPlateau']['mode'],
+                                 factor=self.config['mdrnn_trainer']['ReduceLROnPlateau']['factor'],      # how much lr is reduced new_lr = lr * factor
+                                 patience=self.config['mdrnn_trainer']['ReduceLROnPlateau']['patience'],  # How many epochs to ignore before lr changes
+                                 verbose=self.config['mdrnn_trainer']['ReduceLROnPlateau']['print_lr_change'])
+
+    def _set_device(self):
+        if torch.cuda.is_available():
+            if platform.system() == "Linux":
+                print("GPU enabled on Linux machine...")
+                torch.cuda.set_device(2)
+            print(f'Cuda current device: {torch.cuda.current_device()}')
+            return torch.device('cuda')
+        print(f'Using CPU - Since no GPU was found or GPU driver outdated - ')
+        return torch.device('cpu')
+
     def _create_dataset(self, data_location, buffer_size, file_ratio, is_train,is_same_testdata, max_size=0, is_random_sampling=False):
         dataset = RolloutSequenceDataset(root=data_location,
                                       seq_len=self.sequence_length,
@@ -230,25 +258,120 @@ class MDRNNTrainer:
             raise Exception(f'No files found in {data_location}')
         return dataset
 
-    def _to_latent(self, obs, next_obs):
-        """ Transform observations to latent space.  """
-        image_height, image_width = self.config['preprocessor']['img_height'], self.config['preprocessor']['img_width']
-        latent_output_size = self.config['latent_size']
+    def _data_pass(self, epoch, is_train, include_reward):
+        cumulative_losses = {"loss": 0, "latent_loss": 0, "terminal_loss": 0, "reward_loss": 0}
+        loader = self.train_loader if is_train else self.test_loader
 
+        if len(loader.dataset) <= 0:
+            print(f"Issue with data loader size {len(loader.dataset)}")
+            return
+
+        if is_train:
+            cumulative_losses = self._train_epoch(epoch, cumulative_losses, loader, include_reward)
+        else:
+            cumulative_losses = self._test_epoch(epoch, cumulative_losses, loader, include_reward)
+
+        loss, latent_loss, terminal_loss, reward_loss = self._extract_epoch_loss(cumulative_losses, loader)
+        self._log_epoch_loss(loss, reward_loss, terminal_loss, latent_loss, self.baseline_train_loss, epoch, is_train=is_train)
+
+        return {'average_loss': loss,
+                'reward_loss': reward_loss,
+                'terminal_loss': terminal_loss,
+                'next_latent_loss': terminal_loss}
+
+    def _train_epoch(self, epoch, cumulative_losses, loader, include_reward):
+        self.mdrnn.train()
+        batch_test_loader = iter(self.test_loader)
+        last_tested_batch_idx = self.batch_train_idx
+        test_batch_cumulative_losses = {"loss": 0, "latent_loss": 0, "terminal_loss": 0, "reward_loss": 0, 'n': 0}
+
+        progress_bar = tqdm(total=len(loader.dataset) if len(loader.dataset) >= 0 else 1, desc=f"Train Epoch {epoch}")
+        for i, batch in enumerate(loader):
+            latent_obs, actions, rewards, terminals, latent_next_obs = self._extract_batch_data(batch)
+
+            losses = self._train_step(latent_obs, actions, rewards, terminals, latent_next_obs, include_reward)
+
+            self._update_cumulative_losses(cumulative_losses, current_losses=losses)
+            batch_loss, batch_latent_loss, batch_terminal_loss, batch_reward_loss = self._extract_batch_loss(current_batch_number=i + 1,
+                                                                                                             cumulative_losses=cumulative_losses)
+
+            self._log_batch_loss(batch_loss, batch_reward_loss, batch_terminal_loss, batch_latent_loss, self.baseline_train_loss, is_train=True)
+
+            if self.batch_train_idx % self.N_train_batch_until_test_batch == 0:
+                batch_test_loader, test_batch_cumulative_losses = self._test_batch(batch_test_loader, test_batch_cumulative_losses, include_reward)
+                last_tested_batch_idx = self.batch_train_idx
+
+            self.batch_train_idx += 1
+
+            progress_bar.set_postfix_str(f"loss={batch_loss} bce={batch_terminal_loss} gmm={batch_latent_loss} mse={batch_reward_loss}")
+            progress_bar.update(self.batch_size)
+        progress_bar.close()
+
+        if last_tested_batch_idx != self.batch_train_idx-1:
+            self._test_batch(batch_test_loader, test_batch_cumulative_losses, include_reward)
+
+        return cumulative_losses
+
+    def _test_epoch(self, epoch, cumulative_losses, loader, include_reward):
+        self.mdrnn.eval()
+        progress_bar = tqdm(total=len(loader.dataset) if len(loader.dataset) >= 0 else 1, desc=f"Train Epoch {epoch}")
+        for i, batch in enumerate(loader):
+            latent_obs, actions, rewards, terminals, latent_next_obs = self._extract_batch_data(batch)
+
+            losses = self._test_step(latent_obs, actions, rewards, terminals, latent_next_obs, include_reward)
+
+            self._update_cumulative_losses(cumulative_losses, current_losses=losses)
+            batch_loss, batch_latent_loss, batch_terminal_loss, batch_reward_loss = self._extract_batch_loss(
+                                                                                    current_batch_number=i + 1,
+                                                                                    cumulative_losses=cumulative_losses)
+
+            progress_bar.set_postfix_str(f"loss={batch_loss} bce={batch_terminal_loss} gmm={batch_latent_loss} mse={batch_reward_loss}")
+            progress_bar.update(self.batch_size)
+        progress_bar.close()
+        return cumulative_losses
+
+    def _train_step(self, latent_obs, action, reward, terminal, latent_next_obs, include_reward):
+        losses = self._get_loss(latent_obs, action, reward, terminal, latent_next_obs, include_reward)
+        self.optimizer.zero_grad()
+        losses['loss'].backward()
+        torch.nn.utils.clip_grad_norm_(parameters=self.mdrnn.parameters(),
+                                       max_norm=self.config["mdrnn_trainer"]["gradient_clip"])
+        self.optimizer.step()
+        return losses
+
+    def _test_step(self, latent_obs, action, reward, terminal, latent_next_obs, include_reward):
         with torch.no_grad():
-            obs, next_obs = [f.interpolate(x.view(-1, self.config['preprocessor']['num_channels'], image_height, image_width),
-                                           size=latent_output_size, mode='bilinear', align_corners=True)
-                             for x in (obs, next_obs)]
+            return self._get_loss(latent_obs, action, reward, terminal, latent_next_obs, include_reward)
 
-            (obs_mu, obs_logsigma), (next_obs_mu, next_obs_logsigma) = [self.vae(x)[1:] for x in (obs, next_obs)]
+    def _test_batch(self, loader, test_batch_cumulative_losses, include_reward):
+        self.mdrnn.eval()
+        try:
+            batch = next(loader)
 
-            latent_obs, latent_next_obs = [(x_mu + x_logsigma.exp() * torch.randn_like(x_mu)).view(self.batch_size,
-                                                                                                   self.sequence_length,
-                                                                                                   self.latent_size)
-                                           for x_mu, x_logsigma in [(obs_mu, obs_logsigma), (next_obs_mu, next_obs_logsigma)]]
-        return latent_obs, latent_next_obs
+        except StopIteration:
+            loader = iter(self.test_loader)
+            batch = next(loader)
+
+        latent_obs, actions, rewards, terminals, latent_next_obs = self._extract_batch_data(batch)
+        losses = self._test_step(latent_obs, actions, rewards, terminals, latent_next_obs, include_reward)
+
+        self._update_cumulative_losses(test_batch_cumulative_losses, losses)
+        test_batch_cumulative_losses['n'] += 1
+
+        n = test_batch_cumulative_losses['n']
+        batch_loss, batch_latent_loss, batch_terminal_loss, batch_reward_loss = self._extract_batch_loss(n, test_batch_cumulative_losses)
+        self._log_batch_loss(batch_loss, batch_reward_loss, batch_terminal_loss, batch_latent_loss, self.baseline_test_loss, is_train=False)
+        self.mdrnn.train()
+        return loader, test_batch_cumulative_losses
 
     def _get_loss(self, latent_obs, action, reward, terminal, latent_next_obs, include_reward: bool):
+        """ Compute losses.
+           The loss that is computed is:
+           loss = (GMMLoss(latent_next_obs, GMMPredicted) + MSE(reward, predicted_reward) + BCE(terminal, logit_terminal)) / (LSIZE + 2)
+           The LSIZE + 2 factor is here to counteract the fact that the GMMLoss scales
+           approximately linearily with LSIZE. All losses are averaged both on the
+           batch and the sequence dimensions (the two first dimensions).
+           """
         latent_obs, action, reward, terminal, latent_next_obs = [arr.transpose(1, 0)
                                                                 for arr in
                                                                 [latent_obs, action, reward, terminal, latent_next_obs]]
@@ -257,7 +380,6 @@ class MDRNNTrainer:
         bce = f.binary_cross_entropy_with_logits(ds, terminal)
         if include_reward:
             mse = f.mse_loss(rs, reward)
-
             scale = self.latent_size + 2
         else:
             mse = 0
@@ -265,72 +387,63 @@ class MDRNNTrainer:
         loss = (gmm + bce + mse) / scale
         return dict(gmm=gmm, bce=bce, mse=mse, loss=loss)
 
-    def _data_pass(self, epoch, is_train, include_reward):
-        """ One pass through the data """
-        if is_train:
-            self.mdrnn.train()
-            loader = self.train_loader
-        else:
-            self.mdrnn.eval()
-            loader = self.test_loader
+    def _extract_batch_data(self, batch):
+        obs, actions, rewards, terminals, next_obs = [arr.to(self.device) for arr in batch]
+        latent_obs, latent_next_obs = self._to_latent(obs, next_obs)
+        return latent_obs, actions, rewards, terminals, latent_next_obs
 
-        baseline_loss = self.baseline_train_loss if is_train else self.baseline_test_loss
+    def _to_latent(self, obs, next_obs):
+        """ Transform observations to latent space.  """
+        image_height, image_width = self.config['preprocessor']['img_height'], self.config['preprocessor']['img_width']
+        latent_output_size = self.config['latent_size']
 
-        # loader.dataset.load_next_buffer()
-        cum_loss = 0
-        cum_gmm = 0
-        cum_bce = 0
-        cum_mse = 0
-        progress_bar = tqdm(total=len(loader.dataset) if len(loader.dataset) >= 0 else 1, desc=f"{'Train' if is_train else 'Test'} Epoch {epoch}")
-        for i, batch in enumerate(loader):
-            obs, action, reward, terminal, next_obs = [arr.to(self.device) for arr in batch]
+        with torch.no_grad():
+            obs, next_obs = [
+                f.interpolate(x.view(-1, self.config['preprocessor']['num_channels'], image_height, image_width),
+                              size=latent_output_size, mode='bilinear', align_corners=True)
+                for x in (obs, next_obs)]
 
-            # transform obs to latent states
-            latent_obs, latent_next_obs = self._to_latent(obs, next_obs)
+            (obs_mu, obs_logsigma), (next_obs_mu, next_obs_logsigma) = [self.vae(x)[1:] for x in (obs, next_obs)]
 
-            if is_train:
-                losses = self._get_loss(latent_obs, action, reward, terminal, latent_next_obs, include_reward)
-                self.optimizer.zero_grad()
-                losses['loss'].backward()
-                torch.nn.utils.clip_grad_norm_(parameters=self.mdrnn.parameters(), max_norm=self.config["mdrnn_trainer"]["gradient_clip"])
-                self.optimizer.step()
-            else:
-                with torch.no_grad():
-                    losses = self._get_loss(latent_obs, action, reward, terminal, latent_next_obs, include_reward)
+            latent_obs, latent_next_obs = [(x_mu + x_logsigma.exp() * torch.randn_like(x_mu)).view(self.batch_size,
+                                                                                                   self.sequence_length,
+                                                                                                   self.latent_size)
+                                           for x_mu, x_logsigma in
+                                           [(obs_mu, obs_logsigma), (next_obs_mu, next_obs_logsigma)]]
+        return latent_obs, latent_next_obs
 
-            cum_loss += losses['loss'].item()
-            cum_gmm += losses['gmm'].item()
-            cum_bce += losses['bce'].item()
-            cum_mse += losses['mse'].item() if hasattr(losses['mse'], 'item') else losses['mse']
+    def _update_cumulative_losses(self, cumulative_losses, current_losses):
+        cumulative_losses['loss'] += current_losses['loss'].item()
+        cumulative_losses['latent_loss'] += current_losses['gmm'].item()
+        cumulative_losses['terminal_loss'] += current_losses['bce'].item()
+        cumulative_losses['reward_loss'] += current_losses['mse'].item() if hasattr(current_losses['mse'], 'item') \
+                                                                         else current_losses['mse']
+        return cumulative_losses
 
-            loss = cum_loss / (i + 1)
-            bce = cum_bce / (i + 1)
-            gmm = cum_gmm / self.config['latent_size'] / (i + 1)
-            mse = cum_mse / (i + 1)
+    def _extract_batch_loss(self, current_batch_number, cumulative_losses):
+        batch_loss = cumulative_losses['loss'] / current_batch_number
+        batch_terminal_loss = cumulative_losses['terminal_loss'] / current_batch_number
+        batch_latent_loss = cumulative_losses['latent_loss'] / self.config['latent_size'] / current_batch_number
+        batch_reward_loss = cumulative_losses['reward_loss'] / current_batch_number
+        return batch_loss, batch_latent_loss, batch_terminal_loss, batch_reward_loss
 
-            progress_bar.set_postfix_str(f"loss={loss} bce={bce} gmm={gmm} mse={mse}")
-            progress_bar.update(self.batch_size)
+    def _extract_epoch_loss(self, cumulative_losses, loader):
+        loss = cumulative_losses['loss'] * self.batch_size / len(loader.dataset)
+        latent_loss = cumulative_losses['latent_loss'] * self.batch_size / len(loader.dataset)
+        terminal_loss = cumulative_losses['terminal_loss'] * self.batch_size / len(loader.dataset)
+        reward_loss = cumulative_losses['reward_loss'] * self.batch_size / len(loader.dataset)
+        return loss, latent_loss, terminal_loss, reward_loss
 
-            self.batch_train_idx = self.batch_train_idx + 1 if is_train else self.batch_train_idx
+    def _log_batch_loss(self, loss, mse, bce, gmm, baseline_loss, is_train):
+        self.logger.log_average_loss_per_batch(f'mdrnn', loss, self.batch_train_idx, is_train=is_train)
+        self.logger.log_reward_loss_per_batch(f'mdrnn', mse, self.batch_train_idx, is_train=is_train)
+        self.logger.log_terminal_loss_per_batch(f'mdrnn', bce, self.batch_train_idx, is_train=is_train)
+        self.logger.log_next_latent_loss_per_batch(f'mdrnn', gmm, self.batch_train_idx, is_train=is_train)
 
-            self.logger.log_average_loss_per_batch(f'mdrnn', loss, self.batch_train_idx, is_train=is_train)
-            self.logger.log_reward_loss_per_batch(f'mdrnn', mse, self.batch_train_idx, is_train=is_train)
-            self.logger.log_terminal_loss_per_batch(f'mdrnn', bce, self.batch_train_idx, is_train=is_train)
-            self.logger.log_next_latent_loss_per_batch(f'mdrnn', gmm, self.batch_train_idx, is_train=is_train)
+        if self.is_baseline_reward_loss:
+            self.logger.log_baseline_reward_loss_per_batch(f'mdrnn', baseline_loss, self.batch_train_idx, is_train=is_train)
 
-            if self.is_baseline_reward_loss:
-                self.logger.log_baseline_reward_loss_per_batch(f'mdrnn', baseline_loss, self.batch_train_idx, is_train=is_train)
-        progress_bar.close()
-
-        if len(loader.dataset) <= 0:
-            print(f"Issue with data loader size {len(loader.dataset)}")
-            return
-
-        average_loss = cum_loss * self.batch_size / len(loader.dataset)
-        reward_loss = cum_mse * self.batch_size / len(loader.dataset)
-        terminal_loss = cum_bce * self.batch_size / len(loader.dataset)
-        next_latent_loss = cum_gmm * self.batch_size / len(loader.dataset)
-
+    def _log_epoch_loss(self, average_loss, reward_loss, terminal_loss, next_latent_loss, baseline_loss, epoch, is_train):
         self.logger.log_average_loss_per_epoch('mdrnn', average_loss, epoch, is_train=is_train)
         self.logger.log_reward_loss_per_epoch('mdrnn', reward_loss, epoch, is_train=is_train)
         self.logger.log_terminal_loss_per_epoch('mdrnn', terminal_loss, epoch, is_train=is_train)
@@ -338,24 +451,6 @@ class MDRNNTrainer:
 
         if self.is_baseline_reward_loss:
             self.logger.log_baseline_reward_loss_per_epoch('mdrnn', baseline_loss, epoch, is_train=is_train)
-
-        return {'average_loss': average_loss,
-                'reward_loss': reward_loss,
-                'terminal_loss': terminal_loss,
-                'next_latent_loss': terminal_loss}
-
-    def _save_checkpoint(self, state, is_best, iteration):
-        best_model_filename = join(self.model_dir, f"checkpoints/{'iterative_' if self.is_iterative else ''}{self.best_mdrnn_filename}")
-        checkpoint_filename = join(self.model_dir, f"checkpoints/{'iterative_' if self.is_iterative else ''}{self.checkpoint_filename}")
-
-        if self.is_iterative:  # For backup purpose
-            iteration_filename = join(self.backup_dir, f"iterative_{iteration}_{self.best_mdrnn_filename}")
-            torch.save(state, iteration_filename)
-
-        torch.save(state, checkpoint_filename)
-        if is_best or self.is_iterative:
-            torch.save(state, best_model_filename)
-            print(f'New best model found and saved')
 
     def _calc_reward_avg_baseline(self):
         with torch.no_grad():

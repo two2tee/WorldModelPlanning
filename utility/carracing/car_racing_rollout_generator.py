@@ -21,6 +21,7 @@ class RolloutGenerator(BaseRolloutGenerator):
         progress_description = f"Data generation for {self.config['game']} | thread: {thread} | rollout: {current_rollout}/{rollouts}"
         for _ in tqdm(range(self.sequence_length + 1), desc=progress_description, position=thread - 1):
             obs, reward, done, info, action = self._step(environment, obs, action, model)
+            environment.render()
             obs = self._compress_frame(obs, is_resize=True)
             environment.environment.viewer.window.dispatch_events()
             actions_rollout.append(action)
@@ -50,7 +51,7 @@ class RolloutGenerator(BaseRolloutGenerator):
             z, mu, logvar = model.encode_obs(obs)
             action = model.get_action(z)
         else:
-            action = self.action_sampler.brownian_sample(previous_action)
+            action = self.action_sampler.sample(previous_action)
         obs, reward, done, info = environment.step(action)
 
         return obs, reward, done, info, action

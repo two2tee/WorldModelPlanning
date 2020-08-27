@@ -17,19 +17,18 @@ class CarRacingActionSampler(BaseActionSampler):
         return self._continous_sample(previous_action) if not self.is_discretize_sampling else self.discrete_sample()
 
     def _continous_sample(self, previous_action=None):
-        steer = np.random.uniform(low=-1, high=1) if previous_action is None else \
-                np.random.choice([max(previous_action[0] - self.steer_delta, -1),
-                                  previous_action[0],
-                                  min(previous_action[0] + self.steer_delta, 1)])
+        steer = np.random.uniform(low=-1, high=1)
 
-        gas = np.random.uniform(low=self.max_brake, high=self.max_gas) if previous_action is None else \
-              np.random.choice([max(previous_action[1] - self.gas_delta, -1),
-                                previous_action[1],
-                                min(previous_action[1] + self.gas_delta, 1)])
+        speed = np.random.uniform(low=self.max_brake, high=self.max_gas) if previous_action is None else \
+                random.uniform(self.max_brake, self.max_gas)
+            #     np.random.choice([max(previous_action[1] - self.gas_delta, -1),
+            #     previous_action[1],
+            #     min(previous_action[1] + self.gas_delta, 1)])
 
         # Brake: negative sign of gas to avoid simultaneous brake/gas driving
-        gas = gas if gas > 0 else 0
-        brake = abs(gas) if gas < 0 else 0
+        gas = speed if speed > 0 else 0
+        brake = abs(speed) if speed < 0 else 0
+        print([steer, gas, brake])
         return [steer, gas, brake]
 
     def discrete_sample(self):
@@ -42,9 +41,9 @@ class CarRacingActionSampler(BaseActionSampler):
 
     def brownian_sample(self, previous_action):  # a_{t+1} = a_t + sqrt(dt) N(0, 1)
         new_action = [0, 0, 0]
-        new_action[0] = brownian_sample(previous_action[0], upper=-1, lower=1)
-        new_action[1] = brownian_sample(previous_action[1], upper=0, lower=1)
-        new_action[2] = brownian_sample(previous_action[2], upper=0, lower=1)
+        new_action[0] = brownian_sample(previous_action[0], lower=-1, upper=1)
+        new_action[1] = brownian_sample(previous_action[1], lower=0, upper=1)
+        new_action[2] = brownian_sample(previous_action[2], lower=0, upper=1)
         return new_action
 
     def discrete_delta_sample(self, previous_action=None):
