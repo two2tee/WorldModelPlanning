@@ -30,7 +30,6 @@ class SimulatedPlanningController:
             return [-1]
         raise Exception(f'No implementation of game controller was found for game: {self.config["game"]}')
 
-
     def _get_on_key_press(self, event):
         if self.config['game'] == 'CarRacing-v0':
             return self._on_key_press_car(event)
@@ -123,7 +122,6 @@ class SimulatedPlanningController:
                     self.simulated_environment.render()
 
                 total_steps += 1
-                # print(f"Reward: {round(total_reward)} | Sim. reward: {round(total_simulated_reward)} | {total_steps} steps")
 
             return total_steps, total_reward, total_simulated_reward
 

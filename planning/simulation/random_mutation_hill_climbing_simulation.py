@@ -97,7 +97,7 @@ class RMHC(AbstractRandomMutationHillClimbing):
         individual.age, individual.fitness = generation + 1, 0
         return individual
 
-    def _evaluate_individual(self, individual, environment):
+    def _evaluate_individual(self, individual, environment):  # TODO:DEV
         is_done = False
         total_reward = 0
         latent = self.latent

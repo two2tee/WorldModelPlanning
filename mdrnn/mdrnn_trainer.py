@@ -287,7 +287,7 @@ class MDRNNTrainer:
 
         progress_bar = tqdm(total=len(loader.dataset) if len(loader.dataset) >= 0 else 1, desc=f"Train Epoch {epoch}")
         for i, batch in enumerate(loader):
-            latent_obs, actions, rewards, terminals, latent_next_obs = self._extract_batch_data(batch)
+            latent_obs, actions, rewards, terminals, latent_next_obs = self._extract_batch_data(batch)  # TODO:DEV
 
             losses = self._train_step(latent_obs, actions, rewards, terminals, latent_next_obs, include_reward)
 
@@ -379,13 +379,13 @@ class MDRNNTrainer:
         gmm = gmm_loss(latent_next_obs, mus, sigmas, logpi)
         bce = f.binary_cross_entropy_with_logits(ds, terminal)
         if include_reward:
-            mse = f.mse_loss(rs, reward)
-            scale = self.latent_size + 2
+            mse = f.mse_loss(rs, reward)  # TODO:DEV
+            scale = self.latent_size + 2  # TODO:DEV
         else:
-            mse = 0
+            mse = 0  # TODO:DEV
             scale = self.latent_size + 1
-        loss = (gmm + bce + mse) / scale
-        return dict(gmm=gmm, bce=bce, mse=mse, loss=loss)
+        loss = (gmm + bce + mse) / scale  # TODO:DEV
+        return dict(gmm=gmm, bce=bce, mse=mse, loss=loss)  # TODO:DEV
 
     def _extract_batch_data(self, batch):
         obs, actions, rewards, terminals, next_obs = [arr.to(self.device) for arr in batch]
@@ -416,6 +416,8 @@ class MDRNNTrainer:
         cumulative_losses['loss'] += current_losses['loss'].item()
         cumulative_losses['latent_loss'] += current_losses['gmm'].item()
         cumulative_losses['terminal_loss'] += current_losses['bce'].item()
+
+        # TODO:DEV
         cumulative_losses['reward_loss'] += current_losses['mse'].item() if hasattr(current_losses['mse'], 'item') \
                                                                          else current_losses['mse']
         return cumulative_losses

@@ -36,6 +36,7 @@ class SimulatedEnvironment:
             self.figure_num = self.figure.number
             self.current_reconstruction = None
 
+    # TODO:DEV
     def step(self, action, hidden_state_h=None, latent_state_z=None, is_simulation_real_environment=True):
         hidden_state_h = self.current_hidden_states if hidden_state_h is None else hidden_state_h
         latent_state_z = self.current_latent_state_z if latent_state_z is None else latent_state_z
@@ -52,6 +53,7 @@ class SimulatedEnvironment:
             self._reset_monitor()
         return self._reset_states()
 
+    # TODO:DEV
     def _step_mdrnn(self, action, latent_z, hidden_states):
         with torch.no_grad():
             action = torch.Tensor(action).unsqueeze(0).unsqueeze(0)
