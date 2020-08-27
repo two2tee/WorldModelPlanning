@@ -77,7 +77,7 @@ class MDRNNTrainer:
 
         self.latent_size = self.config["latent_size"]
         self.batch_size = self.config["mdrnn_trainer"]["batch_size"]
-        self.batch_train_idx, self.batch_test_idx = 0, 0
+        self.batch_train_idx = 0
         self.sequence_length = self.config["mdrnn_trainer"]["sequence_length"]
 
         self.baseline_test_loss, self.baseline_train_loss = 0, 0
@@ -95,7 +95,7 @@ class MDRNNTrainer:
         self.is_iterative = self.config["is_iterative_train_mdrnn"] and not self.config["is_train_mdrnn"]
 
     def train(self, vae, mdrnn, data_dir=None, max_epochs=None, seq_len=None, iteration=None, max_size=0, random_sampling=False):
-        self.batch_train_idx, self.batch_test_idx = 0, 0
+        self.batch_train_idx = 0
         self.baseline_test_loss, self.baseline_train_loss = 0, 0
         self.sequence_length = self.config['mdrnn_trainer']['sequence_length'] if seq_len is None else seq_len
         self.data_dir = self.data_dir if data_dir is None else data_dir
@@ -310,19 +310,15 @@ class MDRNNTrainer:
             progress_bar.set_postfix_str(f"loss={loss} bce={bce} gmm={gmm} mse={mse}")
             progress_bar.update(self.batch_size)
 
-            if is_train:
-                self.batch_train_idx += 1
-            else:
-                self.batch_test_idx += 1
-            batch_id = self.batch_train_idx if is_train else self.batch_test_idx
+            self.batch_train_idx = self.batch_train_idx + 1 if is_train else self.batch_train_idx
 
-            self.logger.log_average_loss_per_batch(f'mdrnn', loss, batch_id, is_train=is_train)
-            self.logger.log_reward_loss_per_batch(f'mdrnn', mse, batch_id, is_train=is_train)
-            self.logger.log_terminal_loss_per_batch(f'mdrnn', bce, batch_id, is_train=is_train)
-            self.logger.log_next_latent_loss_per_batch(f'mdrnn', gmm, batch_id, is_train=is_train)
+            self.logger.log_average_loss_per_batch(f'mdrnn', loss, self.batch_train_idx, is_train=is_train)
+            self.logger.log_reward_loss_per_batch(f'mdrnn', mse, self.batch_train_idx, is_train=is_train)
+            self.logger.log_terminal_loss_per_batch(f'mdrnn', bce, self.batch_train_idx, is_train=is_train)
+            self.logger.log_next_latent_loss_per_batch(f'mdrnn', gmm, self.batch_train_idx, is_train=is_train)
 
             if self.is_baseline_reward_loss:
-                self.logger.log_baseline_reward_loss_per_batch(f'mdrnn', baseline_loss, batch_id, is_train=is_train)
+                self.logger.log_baseline_reward_loss_per_batch(f'mdrnn', baseline_loss, self.batch_train_idx, is_train=is_train)
         progress_bar.close()
 
         if len(loader.dataset) <= 0:
