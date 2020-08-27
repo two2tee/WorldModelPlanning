@@ -28,7 +28,6 @@ class CarRacingActionSampler(BaseActionSampler):
         # Brake: negative sign of gas to avoid simultaneous brake/gas driving
         gas = speed if speed > 0 else 0
         brake = abs(speed) if speed < 0 else 0
-        print([steer, gas, brake])
         return [steer, gas, brake]
 
     def discrete_sample(self):
