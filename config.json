@@ -60,7 +60,7 @@
         }
     },
     "data_generator": {
-        "data_prefix": "",
+        "data_prefix": "random",
         "rollouts": 10000,
         "sequence_length": 700,
         "data_output_dir": "data",
