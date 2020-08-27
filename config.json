@@ -4,9 +4,9 @@
     "forced_vae": "World_Model_A",
     "latent_size": 64,
     "num_reconstructions": 64,
-    "is_generate_data": false,
+    "is_generate_data": true,
     "is_train_vae": false,
-    "is_train_mdrnn": true,
+    "is_train_mdrnn": false,
     "is_iterative_train_mdrnn": false,
     "is_ntbea_param_tune": false,
     "is_play": false,
@@ -60,9 +60,9 @@
         }
     },
     "data_generator": {
-        "data_prefix": "",
+        "data_prefix": "random",
         "rollouts": 10000,
-        "sequence_length": 500,
+        "sequence_length": 700,
         "data_output_dir": "data",
         "car_racing": {
             "is_ha_agent_driver": false
@@ -166,7 +166,16 @@
         "is_continue_model": true,
         "is_baseline_reward_loss": true,
         "mdrnn_best_filename": "mdrnn_best.tar",
-        "mdrnn_checkpoint_filename": "mdrnn_checkpoint.tar"
+        "mdrnn_checkpoint_filename": "mdrnn_checkpoint.tar",
+        "N_train_batch_until_test_batch": 10,
+        "is_random_sampling": false,
+        "early_stop_after_n_epochs": 5,
+        "ReduceLROnPlateau": {
+            "mode": "min",
+            "factor": 0.5,
+            "patience": 3,
+            "print_lr_change": true
+        }
     },
     "iterative_trainer": {
         "iterative_data_dir": "data_iterative",
@@ -195,7 +204,7 @@
             "steer_delta": 0.1,
             "gas_delta": 0.2,
             "max_gas": 1,
-            "max_brake": -1
+            "max_brake": -0.5
         }
     },
     "evolution_handler": {

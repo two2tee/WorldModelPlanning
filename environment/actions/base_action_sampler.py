@@ -2,7 +2,7 @@ import numpy as np
 import math
 
 
-def brownian_sample(previous_action, upper, lower):  # a_{t+1} = a_t + sqrt(dt) N(0, 1)
+def brownian_sample(previous_action, lower, upper):  # a_{t+1} = a_t + sqrt(dt) N(0, 1)
     delta = 1. / 50
     dactions_dt = np.random.randn()
     return np.clip(previous_action + math.sqrt(delta) * dactions_dt, lower, upper)
