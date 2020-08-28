@@ -61,4 +61,4 @@ class MDRNN(nn.Module):
         reward_deviations = mdn_outputs[:, :, -2]
         dones = mdn_outputs[:, :, -1]
 
-        return latent_means, latent_deviations, log_mixture_weights, reward_means, reward_deviations dones, (next_hidden_states, next_cell_states)
+        return latent_means, latent_deviations, log_mixture_weights, reward_means, reward_deviations, dones, (next_hidden_states, next_cell_states)
