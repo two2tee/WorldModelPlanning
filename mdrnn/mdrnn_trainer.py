@@ -309,6 +309,7 @@ class MDRNNTrainer:
 
             self.batch_train_idx += 1
 
+            # nll = negative log likelihood of Gaussian reward distribution
             progress_bar.set_postfix_str(f"loss={batch_loss} bce={batch_terminal_loss} gmm={batch_latent_loss} nll={batch_reward_loss}")
             progress_bar.update(self.batch_size)
         progress_bar.close()
