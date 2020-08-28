@@ -49,8 +49,11 @@ def gmm_loss(batch, mus, sigmas, logpi, reduce=True):
     return - log_prob
 
 
-def gaussian_negative_log_likelihood(reward, reward_means, reward_deviations):
-    pass
+def gaussian_negative_log_likelihood(actual_reward_x, predicted_reward_means, predicted_reward_deviations):
+    return - torch.mean(-torch.log(predicted_reward_deviations)
+                        - torch.log(torch.tensor(2 * np.pi)) / 2
+                        - (actual_reward_x - predicted_reward_means) ** 2 / (2 * predicted_reward_deviations ** 2))
+
 
 class MDRNNTrainer:
     def __init__(self, config, preprocessor, logger):
@@ -366,8 +369,6 @@ class MDRNNTrainer:
         self._log_batch_loss(batch_loss, batch_reward_loss, batch_terminal_loss, batch_latent_loss, self.baseline_test_loss, is_train=False)
         self.mdrnn.train()
         return loader, test_batch_cumulative_losses
-
-
 
     def _get_loss(self, latent_obs, action, reward, terminal, latent_next_obs, include_reward: bool):
         """ Compute losses.
