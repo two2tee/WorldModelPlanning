@@ -49,6 +49,9 @@ def gmm_loss(batch, mus, sigmas, logpi, reduce=True):
     return - log_prob
 
 
+def gaussian_negative_log_likelihood(reward, reward_means, reward_deviations):
+    pass
+
 class MDRNNTrainer:
     def __init__(self, config, preprocessor, logger):
         self.config = config
@@ -364,6 +367,8 @@ class MDRNNTrainer:
         self.mdrnn.train()
         return loader, test_batch_cumulative_losses
 
+
+
     def _get_loss(self, latent_obs, action, reward, terminal, latent_next_obs, include_reward: bool):
         """ Compute losses.
            The loss that is computed is:
@@ -372,20 +377,19 @@ class MDRNNTrainer:
            approximately linearily with LSIZE. All losses are averaged both on the
            batch and the sequence dimensions (the two first dimensions).
            """
-        latent_obs, action, reward, terminal, latent_next_obs = [arr.transpose(1, 0)
-                                                                for arr in
-                                                                [latent_obs, action, reward, terminal, latent_next_obs]]
-        mus, sigmas, logpi, rs, ds, _ = self.mdrnn(action, latent_obs)
-        gmm = gmm_loss(latent_next_obs, mus, sigmas, logpi)
-        bce = f.binary_cross_entropy_with_logits(ds, terminal)
+        latent_obs, action, reward, terminal, latent_next_obs = [arr.transpose(1, 0) for arr in
+                                                                 [latent_obs, action, reward, terminal, latent_next_obs]]
+        latent_means, latent_deviations, log_pi_mixture_coefficients, reward_means, reward_deviations, terminals, _ = self.mdrnn(action, latent_obs)
+        latent_gaussian_mixture_loss = gmm_loss(latent_next_obs, latent_means, latent_deviations, log_pi_mixture_coefficients)
+        terminal_binary_cross_entropy = f.binary_cross_entropy_with_logits(terminals, terminal)
         if include_reward:
-            mse = f.mse_loss(rs, reward)  # TODO:DEV
-            scale = self.latent_size + 2  # TODO:DEV
+            reward_negative_log_likelihood = gaussian_negative_log_likelihood(reward, reward_means, reward_deviations) #f.mse_loss(reward_means, reward)  # TODO:DEV
+            scale = self.latent_size + 3  # (3 due to reward mean, reward deviation and terminal)
         else:
-            mse = 0  # TODO:DEV
+            reward_negative_log_likelihood = 0  # TODO:DEV
             scale = self.latent_size + 1
-        loss = (gmm + bce + mse) / scale  # TODO:DEV
-        return dict(gmm=gmm, bce=bce, mse=mse, loss=loss)  # TODO:DEV
+        loss = (latent_gaussian_mixture_loss + terminal_binary_cross_entropy + reward_negative_log_likelihood) / scale  # TODO:DEV
+        return dict(gmm=latent_gaussian_mixture_loss, bce=terminal_binary_cross_entropy, mse=reward_negative_log_likelihood, loss=loss)  # TODO:DEV
 
     def _extract_batch_data(self, batch):
         obs, actions, rewards, terminals, next_obs = [arr.to(self.device) for arr in batch]
