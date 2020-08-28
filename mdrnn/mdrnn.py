@@ -50,15 +50,15 @@ class MDRNN(nn.Module):
         lstm_outputs, (next_hidden_states, next_cell_states) = self.lstm(actions_latents_inputs, previous_hidden_states)
         mdn_outputs = self.mdn(lstm_outputs)
 
-        means = mdn_outputs[:, :, :self.stride].view(sequence_length, batch_size, self.num_gaussians, self.latent_size)  # mu
-
-        log_standard_deviations = mdn_outputs[:, :, self.stride:2 * self.stride].view(sequence_length, batch_size, self.num_gaussians, self.latent_size)  # (seq, batch, input) -> (1,1,5,32)
-        standard_deviations = torch.exp(log_standard_deviations)  # sigma
+        latent_means = mdn_outputs[:, :, :self.stride].view(sequence_length, batch_size, self.num_gaussians, self.latent_size)  # mu
+        latent_log_deviations = mdn_outputs[:, :, self.stride:2 * self.stride].view(sequence_length, batch_size, self.num_gaussians, self.latent_size)  # (seq, batch, input) -> (1,1,5,32)
+        latent_deviations = torch.exp(latent_log_deviations)  # sigma
 
         mixture_weights = mdn_outputs[:, :, 2 * self.stride: 2 * self.stride + self.num_gaussians]  # pi (seq, batch, input) -> (1,1,5,32)
         log_mixture_weights = F.log_softmax(mixture_weights, dim=-1)  # normalization of mixture weights, infer dims
 
-        rewards = mdn_outputs[:, :, -2]  # TODO:DEV
+        reward_means = mdn_outputs[:, :, -3]
+        reward_deviations = mdn_outputs[:, :, -2]
         dones = mdn_outputs[:, :, -1]
 
-        return means, standard_deviations, log_mixture_weights, rewards, dones, (next_hidden_states, next_cell_states)
+        return latent_means, latent_deviations, log_mixture_weights, reward_means, reward_deviations dones, (next_hidden_states, next_cell_states)
