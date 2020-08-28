@@ -26,8 +26,8 @@ class MDN(nn.Module):  # Mixture Density Network
         self.pi_weight_size = 1
         self.means_size = latent_size
         self.standard_deviations_size = latent_size
-        self.reward_done_size = 2  # TODO:DEV
-        self.output_size = num_gaussians * (self.means_size + self.standard_deviations_size + self.pi_weight_size) + self.reward_done_size
+        self.reward_mean_deviation_terminal_size = 3
+        self.output_size = num_gaussians * (self.means_size + self.standard_deviations_size + self.pi_weight_size) + self.reward_mean_deviation_terminal_size
         self.linear_gaussian_mixture_model = nn.Linear(in_features=num_hidden_units, out_features=self.output_size)
 
     def forward(self, hidden_units):
