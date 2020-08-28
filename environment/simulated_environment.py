@@ -54,7 +54,7 @@ class SimulatedEnvironment:
 
     def _step_mdrnn(self, action, latent_z, hidden_states):
         with torch.no_grad():
-            action = torch.Tensor(action).unsqueeze(0).unsqueeze(0)
+            action = torch.tensor(action).unsqueeze(0).unsqueeze(0)
             latent_z = latent_z.unsqueeze(0)
             means, standard_deviations, log_mixture_weights, rewards, dones, next_hidden_states = self.mdrnn.forward(action, latent_z, hidden_states)
             log_mixture_weights = log_mixture_weights.squeeze()
