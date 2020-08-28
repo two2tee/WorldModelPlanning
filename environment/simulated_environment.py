@@ -45,7 +45,7 @@ class SimulatedEnvironment:
         if is_simulation_real_environment:  # Keep track of latent and hidden states if hallucination is real environment
             self._track_states(next_latent_state_z, next_hidden_states)
 
-        # (z', r, d, h')
+        # (z', r, d, h)
         return self._extract_mdrnn_outputs(next_latent_state_z, rewards, dones, next_hidden_states)
 
     def reset(self):
