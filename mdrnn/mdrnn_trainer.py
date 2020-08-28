@@ -155,7 +155,7 @@ class MDRNNTrainer:
         self.logger.end_log_training('mdrnn')
         return self.mdrnn, test_losses
 
-    def reload_model(self, mdrnn, device = None):
+    def reload_model(self, mdrnn, device=None):
         reload_file = join(self.model_dir, f'checkpoints/{self.best_mdrnn_filename}')
         if self.is_iterative:
             existing_iterative_file = join(self.model_dir, f'checkpoints/{"iterative_"}{self.best_mdrnn_filename}')
@@ -309,7 +309,7 @@ class MDRNNTrainer:
 
             self.batch_train_idx += 1
 
-            progress_bar.set_postfix_str(f"loss={batch_loss} bce={batch_terminal_loss} gmm={batch_latent_loss} mse={batch_reward_loss}")
+            progress_bar.set_postfix_str(f"loss={batch_loss} bce={batch_terminal_loss} gmm={batch_latent_loss} nll={batch_reward_loss}")
             progress_bar.update(self.batch_size)
         progress_bar.close()
 
@@ -331,7 +331,7 @@ class MDRNNTrainer:
                                                                                     current_batch_number=i + 1,
                                                                                     cumulative_losses=cumulative_losses)
 
-            progress_bar.set_postfix_str(f"loss={batch_loss} bce={batch_terminal_loss} gmm={batch_latent_loss} mse={batch_reward_loss}")
+            progress_bar.set_postfix_str(f"loss={batch_loss} bce={batch_terminal_loss} gmm={batch_latent_loss} nll={batch_reward_loss}")
             progress_bar.update(self.batch_size)
         progress_bar.close()
         return cumulative_losses
@@ -384,13 +384,13 @@ class MDRNNTrainer:
         latent_gaussian_mixture_loss = gmm_loss(latent_next_obs, latent_means, latent_deviations, log_pi_mixture_coefficients)
         terminal_binary_cross_entropy = f.binary_cross_entropy_with_logits(terminals, terminal)
         if include_reward:
-            reward_negative_log_likelihood = gaussian_negative_log_likelihood(reward, reward_means, reward_deviations) #f.mse_loss(reward_means, reward)  # TODO:DEV
+            reward_negative_log_likelihood = gaussian_negative_log_likelihood(reward, reward_means, reward_deviations)
             scale = self.latent_size + 3  # (3 due to reward mean, reward deviation and terminal)
         else:
-            reward_negative_log_likelihood = 0  # TODO:DEV
+            reward_negative_log_likelihood = 0
             scale = self.latent_size + 1
-        loss = (latent_gaussian_mixture_loss + terminal_binary_cross_entropy + reward_negative_log_likelihood) / scale  # TODO:DEV
-        return dict(gmm=latent_gaussian_mixture_loss, bce=terminal_binary_cross_entropy, mse=reward_negative_log_likelihood, loss=loss)  # TODO:DEV
+        loss = (latent_gaussian_mixture_loss + terminal_binary_cross_entropy + reward_negative_log_likelihood) / scale
+        return dict(gmm=latent_gaussian_mixture_loss, bce=terminal_binary_cross_entropy, nll=reward_negative_log_likelihood, loss=loss)
 
     def _extract_batch_data(self, batch):
         obs, actions, rewards, terminals, next_obs = [arr.to(self.device) for arr in batch]
@@ -421,10 +421,7 @@ class MDRNNTrainer:
         cumulative_losses['loss'] += current_losses['loss'].item()
         cumulative_losses['latent_loss'] += current_losses['gmm'].item()
         cumulative_losses['terminal_loss'] += current_losses['bce'].item()
-
-        # TODO:DEV
-        cumulative_losses['reward_loss'] += current_losses['mse'].item() if hasattr(current_losses['mse'], 'item') \
-                                                                         else current_losses['mse']
+        cumulative_losses['reward_loss'] += current_losses['nll'].item() if hasattr(current_losses['nll'], 'item') else current_losses['nll']
         return cumulative_losses
 
     def _extract_batch_loss(self, current_batch_number, cumulative_losses):
@@ -441,9 +438,9 @@ class MDRNNTrainer:
         reward_loss = cumulative_losses['reward_loss'] * self.batch_size / len(loader.dataset)
         return loss, latent_loss, terminal_loss, reward_loss
 
-    def _log_batch_loss(self, loss, mse, bce, gmm, baseline_loss, is_train):
+    def _log_batch_loss(self, loss, nll, bce, gmm, baseline_loss, is_train):
         self.logger.log_average_loss_per_batch(f'mdrnn', loss, self.batch_train_idx, is_train=is_train)
-        self.logger.log_reward_loss_per_batch(f'mdrnn', mse, self.batch_train_idx, is_train=is_train)
+        self.logger.log_reward_loss_per_batch(f'mdrnn', nll, self.batch_train_idx, is_train=is_train)
         self.logger.log_terminal_loss_per_batch(f'mdrnn', bce, self.batch_train_idx, is_train=is_train)
         self.logger.log_next_latent_loss_per_batch(f'mdrnn', gmm, self.batch_train_idx, is_train=is_train)
 
@@ -491,5 +488,5 @@ class MDRNNTrainer:
             rewards.append(reward_rollouts.numpy())
             progress_bar.update(self.batch_size)
         progress_bar.close()
-        return f.mse_loss(torch.tensor(rewards), torch.tensor(reward_avg_baseline)).item()
+        return f.mse_loss(torch.tensor(rewards), torch.tensor(reward_avg_baseline)).item()  # TODO: refactor, reward with deviation?
 
