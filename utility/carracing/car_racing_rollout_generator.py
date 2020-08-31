@@ -52,7 +52,7 @@ class RolloutGenerator(BaseRolloutGenerator):
             action = model.get_action(z)
         else:
             action = self.action_sampler.sample(previous_action)
-        obs, reward, done, info = environment.step(action)
+        obs, reward, done, info = environment.step(action, ignore_is_done=True)
 
         return obs, reward, done, info, action
 
