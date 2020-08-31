@@ -47,7 +47,7 @@ class BaseRolloutGenerator:
         while i < rollouts + 1:
             actions_rollout, states_rollout, reward_rollout, is_done_rollout = self._standard_rollout(environment, thread, i, rollouts)
 
-            if len(actions_rollout) < 128:  # ensure rollouts contains enough data for sequence
+            if len(actions_rollout) < self.sequence_length:  # ensure rollouts contains enough data for sequence
                 print(f'thread: {thread} - Bad rollout with {len(actions_rollout)} actions - retry...')
                 i -= 1
             else:

@@ -28,8 +28,8 @@ class RolloutGenerator(BaseRolloutGenerator):
             states_rollout.append(obs)
             reward_rollout.append(reward)
             is_done_rollout.append(done)
-            if done:
-                break
+            # if done:
+            #     break
         environment.close()
         return actions_rollout, states_rollout, reward_rollout, is_done_rollout
 
@@ -43,7 +43,7 @@ class RolloutGenerator(BaseRolloutGenerator):
 
         # Garbage collection of events in viewer
         obs, _, _, _ = environment.step([0,0,0])
-        environment.environment.viewer.window.dispatch_events()  # TODO REMOVE AND ENSURE BUG IS FIXED
+        environment.environment.viewer.window.dispatch_events()
         return obs, car_position
 
     def _step(self, environment, obs, previous_action, model=None):

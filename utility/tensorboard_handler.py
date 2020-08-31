@@ -3,11 +3,13 @@
 #  This file is part of the Evolutionary Planning on a Learned World Model thesis.
 #  Unauthorized copying of this file, via any medium is strictly prohibited without the consensus of the authors.
 #  Written by Thor V.A.N. Olesen <thorolesen@gmail.com> & Dennis T.T. Nguyen <dennisnguyen3000@yahoo.dk>.
-
+import io
 import time
+import numpy as np
+import matplotlib.pyplot as plt
+from PIL import Image
 from torchvision.utils import make_grid
 from torch.utils.tensorboard import SummaryWriter
-
 
 class TensorboardHandler:
     def __init__(self, is_logging):
@@ -105,6 +107,55 @@ class TensorboardHandler:
     def log_iteration_avg_reward(self, name, iteration, avg_reward):
         title = f"{name}/Average Total reward"
         self._planning_test_writer.add_scalar(title, avg_reward, iteration)
+
+    def log_batch_sample(self, samples, batch_idx, is_train):
+        # Save the plot to a PNG in memory and prevent display
+        image = self._make_batch_image_grid(samples)
+        if is_train:
+            self._train_writer.add_image(f"Batch_train_samples", image, dataformats='HWC', global_step=batch_idx)
+        else:
+            self._test_writer.add_image(f"Batch_test_samples", image, dataformats='HWC', global_step=batch_idx)
+        self.commit_log()
+
+
+    def _make_batch_image_grid(self, samples):
+        current_frame_subplot = 1
+        num_samples = len(samples['input_frames'])
+
+        figure = plt.figure(figsize=(15, 15))
+        for i in range(num_samples):
+            self.add_to_image_grid('Input\n'
+                                   f'action: {list(samples["input_actions"][i])}\n', current_frame_subplot, samples['input_frames'][i], num_samples)
+            current_frame_subplot += 1
+            self.add_to_image_grid(f'Prediction\n'
+                                   f'reward_pred: {samples["pred_rewards"][i].item()}\n'
+                                   f'terminal_pred: {samples["pred_terminals"][i].item()}',
+                                   current_frame_subplot, samples['pred_frames'][i], num_samples)
+            current_frame_subplot += 1
+            self.add_to_image_grid('Target\n'
+                                   f'reward_target: {samples["target_rewards"][i].item()}\n'
+                                   f'terminal_target: {samples["target_terminals"][i].item()}', current_frame_subplot, samples['target_frames'][i], num_samples)
+            current_frame_subplot += 1
+
+        return self.plot_to_image(figure)
+
+    def plot_to_image(self, figure):
+        # Save the plot to a PNG in memory.
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png')
+        # Closing the figure prevents it from being displayed directly inside notebook.
+        plt.close(figure)
+        buf.seek(0)
+        pil_img = Image.open(buf).convert('RGB')
+        image = np.array(pil_img)
+        return image
+
+    def add_to_image_grid(self, title, index, image, num_samples):
+        plt.subplot(num_samples, 3, index, title=title)  # 3 = input, pred, target
+        plt.xticks([])
+        plt.yticks([])
+        plt.grid(False)
+        plt.imshow(image)
 
     # def log_standard_planning_test(self, test_name, agent, result):
     #     self._planning_test_writer = SummaryWriter(log_dir=f'{self.log_dir_root}/planning_test/{name}')
