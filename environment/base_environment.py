@@ -15,10 +15,10 @@ class BaseEnvironment:
         self.action_sampler = action_sampler.get_action_sampler(config)
         self._is_done = False
 
-    def step(self, action):
+    def step(self, action, ignore_is_done=False):
         if self.environment is None:
             raise Exception('Cannot call step before reset.')
-        if self._is_done:
+        if self._is_done and not ignore_is_done:
             raise Exception('Cannot step since game is done. Please call reset.')
 
         state, reward, is_done, info = self.environment.step(action)
