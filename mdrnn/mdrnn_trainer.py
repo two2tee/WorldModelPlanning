@@ -94,6 +94,7 @@ class MDRNNTrainer:
         self.batch_train_idx = 0
         self.sequence_length = self.config["mdrnn_trainer"]["sequence_length"]
         self.N_train_batch_until_test_batch = self.config['mdrnn_trainer']['N_train_batch_until_test_batch']
+        self.N_train_batch_until_pred_sampling = self.config['mdrnn_trainer']['N_train_batch_until_pred_sampling']
         self.is_random_sampling = self.config['mdrnn_trainer']['is_random_sampling']
 
         self.baseline_test_loss, self.baseline_train_loss = 0, 0
@@ -274,9 +275,7 @@ class MDRNNTrainer:
         cumulative_losses = {"loss": 0, "latent_loss": 0, "terminal_loss": 0, "reward_loss": 0}
         loader = self.train_loader if is_train else self.test_loader
 
-        if len(loader.dataset) <= 0:
-            print(f"Issue with data loader size {len(loader.dataset)}")
-            return
+
 
         if is_train:
             cumulative_losses = self._train_epoch(epoch, cumulative_losses, loader, include_reward)
@@ -285,6 +284,10 @@ class MDRNNTrainer:
 
         loss, latent_loss, terminal_loss, reward_loss = self._extract_epoch_loss(cumulative_losses, loader)
         self._log_epoch_loss(loss, reward_loss, terminal_loss, latent_loss, self.baseline_train_loss, epoch, is_train=is_train)
+
+        if len(loader.dataset) <= 0:
+            print(f"Issue with data loader size {len(loader.dataset)}")
+            return
 
         return {'average_loss': loss,
                 'reward_loss': reward_loss,
@@ -304,24 +307,22 @@ class MDRNNTrainer:
                 batch_test_loader = self._test_batch(batch_test_loader, include_reward)
                 last_tested_batch_idx = self.batch_train_idx
 
-
-
             losses,  batch_results = self._train_step(latent_obs, actions, rewards, terminals, latent_next_obs, include_reward)
 
             self._update_cumulative_losses(cumulative_losses, current_losses=losses)
             batch_loss = losses['loss']
             batch_reward_loss = losses['mse']
             batch_terminal_loss = losses['bce']
-            batch_latent_loss = losses['gmm']
+            batch_latent_loss = losses['gmm'] / self.config['latent_size']
 
             self._log_batch_loss(batch_loss, batch_reward_loss, batch_terminal_loss, batch_latent_loss, self.baseline_train_loss, is_train=True)
-            self.batch_train_idx += 1
-
-            if self.batch_train_idx % 50 == 0:
+            if self.batch_train_idx % self.N_train_batch_until_pred_sampling == 0 or self.batch_train_idx == 0:
                 self._log_batch_prediction_results(batch_results)
 
             progress_bar.set_postfix_str(f"loss={batch_loss} bce={batch_terminal_loss} gmm={batch_latent_loss} mse={batch_reward_loss}")
             progress_bar.update(self.batch_size)
+            self.batch_train_idx += 1
+
         progress_bar.close()
 
         if last_tested_batch_idx != self.batch_train_idx-1:
@@ -331,18 +332,12 @@ class MDRNNTrainer:
 
     def _test_epoch(self, epoch, cumulative_losses, loader, include_reward):
         self.mdrnn.eval()
-        progress_bar = tqdm(total=len(loader.dataset) if len(loader.dataset) >= 0 else 1, desc=f"Train Epoch {epoch}")
+        progress_bar = tqdm(total=len(loader.dataset) if len(loader.dataset) >= 0 else 1, desc=f"Test Epoch {epoch}")
         for i, batch in enumerate(loader):
             latent_obs, actions, rewards, terminals, latent_next_obs = self._extract_batch_data(batch)
-
             losses,  batch_results = self._test_step(latent_obs, actions, rewards, terminals, latent_next_obs, include_reward)
-
             self._update_cumulative_losses(cumulative_losses, current_losses=losses)
-            batch_loss = losses['loss']
-            batch_reward_loss = losses['mse']
-            batch_terminal_loss = losses['bce']
-            batch_latent_loss = losses['gmm']
-
+            batch_loss, batch_reward_loss, batch_terminal_loss, batch_latent_loss = self._extract_batch_loss(losses)
             progress_bar.set_postfix_str(f"loss={batch_loss} bce={batch_terminal_loss} gmm={batch_latent_loss} mse={batch_reward_loss}")
             progress_bar.update(self.batch_size)
         progress_bar.close()
@@ -373,11 +368,11 @@ class MDRNNTrainer:
         latent_obs, actions, rewards, terminals, latent_next_obs = self._extract_batch_data(batch)
         losses, batch_results = self._test_step(latent_obs, actions, rewards, terminals, latent_next_obs, include_reward)
 
-        batch_loss = losses['loss']
-        batch_reward_loss = losses['mse']
-        batch_terminal_loss = losses['bce']
-        batch_latent_loss = losses['gmm']
+        batch_loss, batch_reward_loss, batch_terminal_loss, batch_latent_loss = self._extract_batch_loss(losses)
         self._log_batch_loss(batch_loss, batch_reward_loss, batch_terminal_loss, batch_latent_loss, self.baseline_test_loss, is_train=False)
+        if self.batch_train_idx % self.N_train_batch_until_pred_sampling == 0 or self.batch_train_idx == 0:
+            self._log_batch_prediction_results(batch_results, is_train=False)
+
         self.mdrnn.train()
         return loader
 
@@ -460,6 +455,13 @@ class MDRNNTrainer:
         reward_loss = cumulative_losses['reward_loss'] * self.batch_size / len(loader.dataset)
         return loss, latent_loss, terminal_loss, reward_loss
 
+    def _extract_batch_loss(self, losses):
+        batch_loss = losses['loss']
+        batch_reward_loss = losses['mse']
+        batch_terminal_loss = losses['bce']
+        batch_latent_loss = losses['gmm'] / self.config['latent_size']
+        return batch_loss, batch_reward_loss, batch_terminal_loss, batch_latent_loss
+
     def _log_batch_loss(self, loss, mse, bce, gmm, baseline_loss, is_train):
         self.logger.log_average_loss_per_batch(f'mdrnn', loss, self.batch_train_idx, is_train=is_train)
         self.logger.log_reward_loss_per_batch(f'mdrnn', mse, self.batch_train_idx, is_train=is_train)
@@ -478,7 +480,7 @@ class MDRNNTrainer:
         if self.is_baseline_reward_loss:
             self.logger.log_baseline_reward_loss_per_epoch('mdrnn', baseline_loss, epoch, is_train=is_train)
 
-    def _log_batch_prediction_results(self, batch_results):
+    def _log_batch_prediction_results(self, batch_results, is_train=True):
         predicted_gmm = batch_results['pred_gmm']
         pred_rewards = batch_results['pred_rewards']
         pred_terminals = batch_results['pred_terminals']
@@ -503,17 +505,17 @@ class MDRNNTrainer:
         target_decoded_frames_samples = [self._decode_latent_z(latent.unsqueeze(0)) for latent in target_latent_samples]
 
         batch_result_samples = {
-            'input_actions': [action.numpy() for action in input_action_samples],
+            'input_actions': [action.clone().detach().numpy() for action in input_action_samples],
             'input_frames': input_decoded_frames_samples,
-            'target_rewards': [reward.numpy() for reward in target_reward_samples],
-            'target_terminals': [terminal.numpy() for terminal in target_terminal_samples],
+            'target_rewards': [reward.clone().detach().numpy() for reward in target_reward_samples],
+            'target_terminals': [terminal.clone().detach().numpy() for terminal in target_terminal_samples],
             'target_frames': target_decoded_frames_samples,
-            'pred_rewards': [reward.numpy() for reward in pred_reward_samples],
-            'pred_terminals': [terminal.numpy() for terminal in pred_terminal_samples],
+            'pred_rewards': [reward.clone().detach().numpy() for reward in pred_reward_samples],
+            'pred_terminals': [terminal.clone().detach().numpy() for terminal in pred_terminal_samples],
             'pred_frames': pred_decoded_frames_samples
         }
 
-        self.logger.log_batch_sample(samples=batch_result_samples, batch_idx=self.batch_train_idx)
+        self.logger.log_batch_sample(samples=batch_result_samples, batch_idx=self.batch_train_idx, is_train=is_train)
 
     def _calc_reward_avg_baseline(self):
         with torch.no_grad():

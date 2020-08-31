@@ -108,9 +108,17 @@ class TensorboardHandler:
         title = f"{name}/Average Total reward"
         self._planning_test_writer.add_scalar(title, avg_reward, iteration)
 
-    def log_batch_sample(self, samples, batch_idx):
+    def log_batch_sample(self, samples, batch_idx, is_train):
         # Save the plot to a PNG in memory and prevent display
+        image = self._make_batch_image_grid(samples)
+        if is_train:
+            self._train_writer.add_image(f"Batch_train_samples", image, dataformats='HWC', global_step=batch_idx)
+        else:
+            self._test_writer.add_image(f"Batch_test_samples", image, dataformats='HWC', global_step=batch_idx)
+        self.commit_log()
 
+
+    def _make_batch_image_grid(self, samples):
         current_frame_subplot = 1
         num_samples = len(samples['input_frames'])
 
@@ -129,9 +137,7 @@ class TensorboardHandler:
                                    f'terminal_target: {samples["target_terminals"][i].item()}', current_frame_subplot, samples['target_frames'][i], num_samples)
             current_frame_subplot += 1
 
-        image = self.plot_to_image(figure)
-        self._train_writer.add_image(f"Batch_train_samples", image, dataformats='HWC', global_step=batch_idx)
-        self.commit_log()
+        return self.plot_to_image(figure)
 
     def plot_to_image(self, figure):
         # Save the plot to a PNG in memory.
@@ -140,7 +146,6 @@ class TensorboardHandler:
         # Closing the figure prevents it from being displayed directly inside notebook.
         plt.close(figure)
         buf.seek(0)
-        # Convert PNG buffer to TF image
         pil_img = Image.open(buf).convert('RGB')
         image = np.array(pil_img)
         return image

@@ -167,7 +167,8 @@
         "is_baseline_reward_loss": true,
         "mdrnn_best_filename": "mdrnn_best.tar",
         "mdrnn_checkpoint_filename": "mdrnn_checkpoint.tar",
-        "N_train_batch_until_test_batch": 10,
+        "N_train_batch_until_test_batch": 5,
+        "N_train_batch_until_pred_sampling": 25,
         "is_random_sampling": false,
         "early_stop_after_n_epochs": 5,
         "ReduceLROnPlateau": {

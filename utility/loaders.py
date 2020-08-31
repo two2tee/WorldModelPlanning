@@ -79,10 +79,7 @@ class _RolloutDataset(torch.utils.data.Dataset):
     def load_next_buffer(self):
         """ Loads next buffer """
         self._buffer_fnames = self._files[self._buffer_index:self._buffer_index + self._buffer_size]
-        self._buffer_index += self._buffer_size
-        self._buffer_index = self._buffer_index % len(self._files)
         self._buffer = []
-        self._cum_size = [0]
 
         # progress bar
         pbar = tqdm(total=len(self._buffer_fnames),
@@ -92,24 +89,61 @@ class _RolloutDataset(torch.utils.data.Dataset):
         for f in self._buffer_fnames:
             with np.load(f) as data:
                 self._buffer += [{k: np.copy(v) for k, v in data.items()}]
-                self._cum_size += [self._cum_size[-1] + self._data_per_sequence(data['rewards'].shape[0])]
-
             pbar.update(1)
         pbar.close()
+
+
+    # def load_next_buffer(self):
+    #     """ Loads next buffer """
+    #     self._buffer_fnames = self._files[self._buffer_index:self._buffer_index + self._buffer_size]
+    #     self._buffer_index += self._buffer_size
+    #     self._buffer_index = self._buffer_index % len(self._files)
+    #     self._buffer = []
+    #     self._cum_size = [0]
+    #
+    #     # progress bar
+    #     pbar = tqdm(total=len(self._buffer_fnames),
+    #                 bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} {postfix}')
+    #     pbar.set_description("Loading file buffer ...")
+    #
+    #     for f in self._buffer_fnames:
+    #         with np.load(f) as data:
+    #             self._buffer += [{k: np.copy(v) for k, v in data.items()}]
+    #             self._cum_size += [self._cum_size[-1] + self._data_per_sequence(data['rewards'].shape[0])]
+    #
+    #         pbar.update(1)
+    #     pbar.close()
 
     def __len__(self):
         # to have a full sequence, you need self.seq_len + 1 elements, as
         # you must produce both an seq_len obs and seq_len next_obs sequences
-        if not self._cum_size:
+        if self._buffer == [] or self._buffer == None:
             self.load_next_buffer()
-        return self._cum_size[-1]
+        return len(self._files)
+
+    # def __len__(self):
+    #     # to have a full sequence, you need self.seq_len + 1 elements, as
+    #     # you must produce both an seq_len obs and seq_len next_obs sequences
+    #     if self._cum_size == [] or self._cum_size == None:
+    #         self.load_next_buffer()
+    #     return self._cum_size[-1]
 
     def __getitem__(self, i):
-        # binary search through cum_size
-        file_index = bisect(self._cum_size, i) - 1
-        seq_index = i - self._cum_size[file_index]
-        data = self._buffer[file_index]
-        return self._get_data(data, seq_index)
+        # if i == self._buffer_size and i != 0:
+        #     self.load_next_buffer()
+        # index = i % self._buffer_size
+        # data = self._buffer[index]
+        # return self._get_data(data, 0)
+        with np.load(self._files[i]) as data:
+            data = {k: np.copy(v) for k, v in data.items()}
+        return self._get_data(data, 0)
+
+    # def __getitem__(self, i):
+    #     # binary search through cum_size
+    #     file_index = bisect(self._cum_size, i) - 1
+    #     seq_index = i - self._cum_size[file_index]
+    #     data = self._buffer[file_index]
+    #     return self._get_data(data, seq_index)
 
     def _get_data(self, data, seq_index):
         pass
