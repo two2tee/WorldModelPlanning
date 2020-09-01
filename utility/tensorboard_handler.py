@@ -20,7 +20,7 @@ class TensorboardHandler:
         self.start_time = None
         self.is_logging = is_logging
 
-    def start_log_training(self, name, model, dataloader, save_input_image=True):
+    def start_log_training(self, name, model, dataloader, save_input_image=True, is_vae=False):
         if not self.is_logging:
             return
         dataiter = iter(dataloader)
@@ -32,10 +32,10 @@ class TensorboardHandler:
         self._train_writer.add_graph(model, frames)
         self.start_time = time.time()
 
-    def start_log_training_minimal(self, name):
+    def start_log_training_minimal(self, name,  is_vae=False):
         if not self.is_logging:
             return
-        self.start_log(name)
+        self.start_log(name, is_vae)
         self.start_time = time.time()
 
     def log_average_loss_per_epoch(self, name, loss, epoch, is_train):
@@ -88,11 +88,25 @@ class TensorboardHandler:
         title = f"{name} - GMM next latent Loss/per_batch"
         self.log_train_test(title, loss, batch, is_train)
 
-    def log_vae_reconstruction(self, images, epoch):
+    def log_vae_random_constructions(self, images, epoch):
         if not self.is_logging:
             return
         grid = make_grid(images)
-        self._train_writer.add_image(f'reconstruction_{epoch}', grid, 0)
+        self._test_writer.add_image(f'vae_random_latent_vectors_construction', grid, global_step=epoch)
+
+    def log_vae_reconsstructions(self, targets, predictions, epoch, is_train):
+        if not self.is_logging:
+            return
+        target_grid = make_grid(targets)
+        predictions = make_grid(predictions)
+
+        if is_train:
+            self._train_writer.add_image(f'vae_reconstructions/train_targets', target_grid, global_step=epoch)
+            self._train_writer.add_image(f'vae_reconstructions/train_predictions', predictions, global_step=epoch)
+        else:
+            self._test_writer.add_image(f'vae_reconstructions/test_targets', target_grid, global_step=epoch)
+            self._test_writer.add_image(f'vae_reconstructions/test_predictions', predictions, global_step=epoch)
+
 
     def log_train_test(self, tag, loss, epoch, is_train):
         if is_train:
@@ -116,7 +130,6 @@ class TensorboardHandler:
         else:
             self._test_writer.add_image(f"Batch_test_samples", image, dataformats='HWC', global_step=batch_idx)
         self.commit_log()
-
 
     def _make_batch_image_grid(self, samples):
         current_frame_subplot = 1
@@ -167,12 +180,13 @@ class TensorboardHandler:
         self._test_writer.add_text(tag=f'{name} - Total train time', text_string=f'Minutes: {elapsed_time}')
         self.end_log()
 
-    def start_log(self, name):
+    def start_log(self, name, is_vae=False):
         if not self.is_logging:
             return
         self._test_writer = SummaryWriter(log_dir=f'{self.log_dir_root}/test/{name}')
         self._train_writer = SummaryWriter(log_dir=f'{self.log_dir_root}/train/{name}')
-        self._planning_test_writer = SummaryWriter(log_dir=f'{self.log_dir_root}/planning_test/{name}')
+        if not is_vae:
+            self._planning_test_writer = SummaryWriter(log_dir=f'{self.log_dir_root}/planning_test/{name}')
 
     def commit_log(self):
         self._train_writer.flush()

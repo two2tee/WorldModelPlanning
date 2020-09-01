@@ -1,16 +1,12 @@
 """Data loader used by pytorch to load rollout data - based on https://github.com/ctallec/world-models"""
 
-from bisect import bisect
 import os
 import random
 import numpy as np
 import torch.utils.data
-from tqdm import tqdm
-
-
 
 # Original code by Ctallec: https://github.com/ctallec/world-models/blob/master/data/loaders.py
-class _RolloutDataset(torch.utils.data.Dataset):
+class _MDRNNRolloutDataset(torch.utils.data.Dataset):
     CURRENT_TESTDATA = set()
 
     def __init__(self, root, transform, buffer_size=100, is_train=True, is_same_testdata=False, file_ratio=0.5, max_size=0, is_random_sampling=False):
@@ -18,7 +14,7 @@ class _RolloutDataset(torch.utils.data.Dataset):
         self._transform = transform
         self._files = [os.path.join(root, name) for root, dirs, files in os.walk(root) for name in files]
 
-        if is_same_testdata and len(_RolloutDataset.CURRENT_TESTDATA):
+        if is_same_testdata and len(_MDRNNRolloutDataset.CURRENT_TESTDATA):
             self._take_last_as_test(self._files, max_size, file_ratio) # TODO Since we use HA data for initial tests we want to always use same tests here and never random rollouts in ha
         elif not is_train and not is_same_testdata:
             self._clear_test_data()
@@ -31,7 +27,7 @@ class _RolloutDataset(torch.utils.data.Dataset):
 
         self._buffer_index = 0
         self._buffer_size = buffer_size
-        self._cum_size, self._buffer, self._buffer_file_names = None, None, None
+        self._buffer = None
 
         if len(self._files) < self._buffer_size:
             raise Exception(f"Too low number of files {len(self._files)} with larger buffer of size: {self._buffer_size}")
@@ -50,7 +46,7 @@ class _RolloutDataset(torch.utils.data.Dataset):
 
         while len(sampled_files) < files_to_take:
             potential_file = random.choice(files)
-            if potential_file not in _RolloutDataset.CURRENT_TESTDATA and potential_file not in sampled_files:
+            if potential_file not in _MDRNNRolloutDataset.CURRENT_TESTDATA and potential_file not in sampled_files:
                 sampled_files.append(potential_file)
         return sampled_files
 
@@ -61,75 +57,38 @@ class _RolloutDataset(torch.utils.data.Dataset):
         return files[-test_ratio:]
 
     def _set_current_testdata(self, files):
-        if self.is_same_testdata and len(_RolloutDataset.CURRENT_TESTDATA) > 0:
+        if self.is_same_testdata and len(_MDRNNRolloutDataset.CURRENT_TESTDATA) > 0:
             return
 
         self._clear_test_data()
         for file in files:
-            _RolloutDataset.CURRENT_TESTDATA.add(file)
+            _MDRNNRolloutDataset.CURRENT_TESTDATA.add(file)
 
     def _clear_test_data(self):
-        _RolloutDataset.CURRENT_TESTDATA = set()
+        _MDRNNRolloutDataset.CURRENT_TESTDATA = set()
 
     def _calc_file_ratio(self, num_files, file_ratio):
         train_ratio = int(num_files * file_ratio)
         test_ratio = num_files - train_ratio
         return train_ratio, test_ratio
 
-    # def load_next_buffer(self):
-    #     """ Loads next buffer """
-    #     self._buffer_fnames = self._files[self._buffer_index:self._buffer_index + self._buffer_size]
-    #     self._buffer_index += self._buffer_size
-    #     self._buffer_index = self._buffer_index % len(self._files)
-    #     self._buffer = []
-    #     self._cum_size = [0]
-    #
-    #     # progress bar
-    #     pbar = tqdm(total=len(self._buffer_fnames),
-    #                 bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} {postfix}')
-    #     pbar.set_description("Loading file buffer ...")
-    #
-    #     for f in self._buffer_fnames:
-    #         with np.load(f) as data:
-    #             self._buffer += [{k: np.copy(v) for k, v in data.items()}]
-    #             self._cum_size += [self._cum_size[-1] + self._data_per_sequence(data['rewards'].shape[0])]
-    #
-    #         pbar.update(1)
-    #     pbar.close()
-
     def __len__(self):
-        # to have a full sequence, you need self.seq_len + 1 elements, as
-        # you must produce both an seq_len obs and seq_len next_obs sequences
         return len(self._files)
-
-    # def __len__(self):
-    #     # to have a full sequence, you need self.seq_len + 1 elements, as
-    #     # you must produce both an seq_len obs and seq_len next_obs sequences
-    #     if self._cum_size == [] or self._cum_size == None:
-    #         self.load_next_buffer()
-    #     return self._cum_size[-1]
 
     def __getitem__(self, i):
         # print(f'loaded: {self._files[i]}')
         with np.load(self._files[i]) as data:
             data = {k: np.copy(v) for k, v in data.items()}
-        return self._get_data(data, 0)
+        return self._get_data(data)
 
-    # def __getitem__(self, i):
-    #     # binary search through cum_size
-    #     file_index = bisect(self._cum_size, i) - 1
-    #     seq_index = i - self._cum_size[file_index]
-    #     data = self._buffer[file_index]
-    #     return self._get_data(data, seq_index)
-
-    def _get_data(self, data, seq_index):
+    def _get_data(self, data, seq_index=0):
         pass
 
     def _data_per_sequence(self, data_length):
         pass
 
 
-class RolloutSequenceDataset(_RolloutDataset):
+class RolloutSequenceDataset(_MDRNNRolloutDataset):
     """ Encapsulates rollouts.
     Rollouts should be stored in subdirs of the root directory, in the form of npz files,
     each containing a dictionary with the keys:
@@ -158,7 +117,7 @@ class RolloutSequenceDataset(_RolloutDataset):
         super().__init__(root, transform, buffer_size, is_train, is_same_testdata, file_ratio, max_size, is_random_sampling)
         self._seq_len = seq_len
 
-    def _get_data(self, data, seq_index):
+    def _get_data(self, data, seq_index=0):
         obs_data = data['observations'][seq_index:seq_index + self._seq_len + 1]
         obs_data = self._transform(obs_data.astype(np.float32))
         obs, next_obs = obs_data[:-1], obs_data[1:]  # TEACHER FORCING
@@ -175,26 +134,3 @@ class RolloutSequenceDataset(_RolloutDataset):
         return data_length - self._seq_len
 
 
-class RolloutObservationDataset(_RolloutDataset):
-    """ Encapsulates rollouts.
-    Rollouts should be stored in subdirs of the root directory, in the form of npz files,
-    each containing a dictionary with the keys:
-        - observations: (rollout_len, *obs_shape)
-        - actions: (rollout_len, action_size)
-        - rewards: (rollout_len,)
-        - terminals: (rollout_len,), boolean
-     As the dataset is too big to be entirely stored in rams, only chunks of it
-     are stored, consisting of a constant number of files (determined by the
-     buffer_size parameter).  Once built, buffers must be loaded with the
-     load_next_buffer method.
-    Data are then provided in the form of images
-    :args root: root directory of data_random_car sequences
-    :args seq_len: number of timesteps extracted from each rollout
-    :args transform: transformation of the observations
-    :args train: if True, train data_random_car, else test
-    """
-    def _data_per_sequence(self, data_length):
-        return data_length
-
-    def _get_data(self, data, seq_index):
-        return self._transform(data['observations'][seq_index])

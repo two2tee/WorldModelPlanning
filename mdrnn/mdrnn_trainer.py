@@ -22,7 +22,7 @@ from torchvision import transforms
 from torch.distributions import Normal, Categorical
 from torch.utils.data import DataLoader
 # from mdrnn.learning import ReduceLROnPlateau
-from utility.loaders import RolloutSequenceDataset
+from utility.mdrnn_loaders import RolloutSequenceDataset
 from mdrnn.learning import EarlyStopping
 
 
