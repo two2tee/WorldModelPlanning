@@ -76,23 +76,6 @@ class _RolloutDataset(torch.utils.data.Dataset):
         test_ratio = num_files - train_ratio
         return train_ratio, test_ratio
 
-    def load_next_buffer(self):
-        """ Loads next buffer """
-        self._buffer_fnames = self._files[self._buffer_index:self._buffer_index + self._buffer_size]
-        self._buffer = []
-
-        # progress bar
-        pbar = tqdm(total=len(self._buffer_fnames),
-                    bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} {postfix}')
-        pbar.set_description("Loading file buffer ...")
-
-        for f in self._buffer_fnames:
-            with np.load(f) as data:
-                self._buffer += [{k: np.copy(v) for k, v in data.items()}]
-            pbar.update(1)
-        pbar.close()
-
-
     # def load_next_buffer(self):
     #     """ Loads next buffer """
     #     self._buffer_fnames = self._files[self._buffer_index:self._buffer_index + self._buffer_size]
@@ -117,8 +100,6 @@ class _RolloutDataset(torch.utils.data.Dataset):
     def __len__(self):
         # to have a full sequence, you need self.seq_len + 1 elements, as
         # you must produce both an seq_len obs and seq_len next_obs sequences
-        if self._buffer == [] or self._buffer == None:
-            self.load_next_buffer()
         return len(self._files)
 
     # def __len__(self):
@@ -129,11 +110,7 @@ class _RolloutDataset(torch.utils.data.Dataset):
     #     return self._cum_size[-1]
 
     def __getitem__(self, i):
-        # if i == self._buffer_size and i != 0:
-        #     self.load_next_buffer()
-        # index = i % self._buffer_size
-        # data = self._buffer[index]
-        # return self._get_data(data, 0)
+        # print(f'loaded: {self._files[i]}')
         with np.load(self._files[i]) as data:
             data = {k: np.copy(v) for k, v in data.items()}
         return self._get_data(data, 0)
