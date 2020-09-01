@@ -191,7 +191,8 @@ class TensorboardHandler:
     def commit_log(self):
         self._train_writer.flush()
         self._test_writer.flush()
-        self._planning_test_writer.flush()
+        if self._planning_test_writer is not None:
+            self._planning_test_writer.flush()
 
     def end_log(self):
         self.commit_log()
