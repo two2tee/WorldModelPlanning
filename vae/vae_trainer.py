@@ -13,7 +13,7 @@ from torch import optim
 from torch.nn import functional as F
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-from utility.loaders import RolloutObservationDataset
+from utility.vae_loader import RolloutObservationDataset
 sys.path.append("..")
 
 
@@ -50,8 +50,8 @@ class VaeTrainer:
         self.optimizer = None
 
     def load_data(self):  # To avoid reloading in constructor when not training
-        self.train_dataset = RolloutObservationDataset(self.data_dir, self.preprocessor.normalize_frames_train, is_train=True, buffer_size=self.train_buffer_size)
-        self.test_dataset = RolloutObservationDataset(self.data_dir, self.preprocessor.normalize_frames_test, is_train=False, buffer_size=self.test_buffer_size)
+        self.train_dataset = RolloutObservationDataset(self.data_dir, self.preprocessor.normalize_frames_train, buffer_size=self.train_buffer_size)
+        self.test_dataset = RolloutObservationDataset(self.data_dir, self.preprocessor.normalize_frames_test, buffer_size=self.test_buffer_size, is_train=False)
         self.train_loader = DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=True, num_workers=self.num_workers)
         self.test_loader = DataLoader(self.test_dataset, batch_size=self.batch_size, shuffle=True, num_workers=self.num_workers)
 
@@ -59,7 +59,7 @@ class VaeTrainer:
         self.load_data()
         self.vae = vae
         self.logger.is_logging = True
-        self.logger.start_log_training_minimal(name=self.session_name)
+        self.logger.start_log_training_minimal(name=self.session_name, is_vae=True)
         self.vae = self.vae.to(self.device)
         self.optimizer = optim.Adam(self.vae.parameters(), lr=self.config['vae_trainer']['learning_rate'])
         start_epoch, current_best = self._reload_training_session()
@@ -78,21 +78,10 @@ class VaeTrainer:
                                    'precision': test_loss, 'optimizer': self.optimizer.state_dict(),
                                    }, is_best)
             if self.is_save_reconstruction:
-                self._save_reconstructed_sample_frames(epoch)
+                self._log_random_constructions(epoch)
 
         self.logger.end_log_training('vae')
         return self.vae
-
-    def _save_reconstructed_sample_frames(self, epoch):
-        with torch.no_grad():
-            shape = (self.config['num_reconstructions'],  # 64 reconstructions
-                     self.config['preprocessor']['num_channels'],  # 3 image channels
-                     self.preprocessor.img_height, self.preprocessor.img_width)  # size 64x64
-            z_samples = torch.randn(self.config['num_reconstructions'], self.config['latent_size']).to(self.device)
-            reconstructed_sample_frames = self.vae.decoder(z_samples).cpu()  # Extract reconstruction from GPU
-            reconstructed_sample_frames = reconstructed_sample_frames.view(shape)
-            self.logger.log_vae_reconstruction(reconstructed_sample_frames, epoch)
-        print(f'Reconstruction_{epoch} saved')
 
     def reload_model(self, vae, device=None):
         reload_file = join(self.model_dir, self.best_vae_filename)
@@ -136,19 +125,23 @@ class VaeTrainer:
 
     def _train_epoch(self, epoch):
         self.vae.train()  # Turn on train mode
-        self.train_dataset.load_next_buffer()
         train_loss = 0
         progress_bar = tqdm(total=len(self.train_loader.dataset), desc=f"Train Epoch {epoch}")
+        last_target_batch, last_predicted_batch = None, None
         for batch_index, target_frames_batch in enumerate(self.train_loader):
             target_frames_batch = target_frames_batch.to(self.device)
             self.optimizer.zero_grad()  # reset gradient
-            reconstructed_frame, mean, log_variance = self.vae(target_frames_batch)
-            loss = self.loss_function(reconstructed_frame, target_frames_batch, mean, log_variance)
+            reconstructed_frames, mean, log_variance = self.vae(target_frames_batch)
+            loss = self.loss_function(reconstructed_frames, target_frames_batch, mean, log_variance)
             loss.backward()  # back propagation
             train_loss += loss.item()  # Extract loss from tensor
             self.optimizer.step()  # Gradient Descent step
+
+            last_target_batch = target_frames_batch
+            last_predicted_batch = reconstructed_frames
             progress_bar.update(self.batch_size)
 
+        self._log_sample_vae(last_target_batch, last_predicted_batch, epoch, is_train=True)
         progress_bar.close()
 
         if len(self.train_loader.dataset) <= 0:
@@ -161,17 +154,20 @@ class VaeTrainer:
 
     def _test_epoch(self, epoch):
         self.vae.eval()  # Turn on test mode
-        self.test_dataset.load_next_buffer()
         progress_bar = tqdm(total=len(self.test_loader.dataset), desc=f"Test Epoch {epoch}")
         test_loss = 0
+        last_target_batch, last_predicted_batch = None, None
         with torch.no_grad():
-            for target_frame in self.test_loader:
-                target_frame = target_frame.to(self.device)
-                reconstructed_frame, mean, log_variance = self.vae(target_frame)
-                test_loss += self.loss_function(reconstructed_frame, target_frame, mean, log_variance).item()
+            for target_frames_batch in self.test_loader:
+                target_frames_batch = target_frames_batch.to(self.device)
+                reconstructed_frames, mean, log_variance = self.vae(target_frames_batch)
+                test_loss += self.loss_function(reconstructed_frames, target_frames_batch, mean, log_variance).item()
+
+                last_target_batch = target_frames_batch
+                last_predicted_batch = reconstructed_frames
                 progress_bar.set_postfix_str(f"test loss={test_loss}")
                 progress_bar.update(self.batch_size)
-
+            self._log_sample_vae(last_target_batch, last_predicted_batch, epoch, is_train=False)
         progress_bar.close()
 
         if len(self.test_loader.dataset) <= 0:
@@ -182,6 +178,20 @@ class VaeTrainer:
         print(f'====> Epoch: {epoch} Average test loss: {test_loss}')
         self.logger.log_average_loss_per_epoch('vae', test_loss, epoch, is_train=False)
         return test_loss
+
+    def _log_random_constructions(self, epoch):
+        with torch.no_grad():
+            shape = (self.config['num_reconstructions'],  # 64 reconstructions
+                     self.config['preprocessor']['num_channels'],  # 3 image channels
+                     self.preprocessor.img_height, self.preprocessor.img_width)  # size 64x64
+            z_samples = torch.randn(self.config['num_reconstructions'], self.config['latent_size']).to(self.device)
+            reconstructed_sample_frames = self.vae.decoder(z_samples).cpu()  # Extract reconstruction from GPU
+            reconstructed_sample_frames = reconstructed_sample_frames.view(shape)
+            self.logger.log_vae_random_constructions(reconstructed_sample_frames, epoch)
+        print(f'Random construction_{epoch} saved')
+
+    def _log_sample_vae(self, targets, predictions, epoch, is_train):
+        self.logger.log_vae_reconsstructions(targets, predictions, epoch, is_train)
 
     def _save_checkpoint(self, state, is_best):
         best_filename = join(self.model_dir, self.best_vae_filename)

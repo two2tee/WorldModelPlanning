@@ -22,7 +22,7 @@ from torchvision import transforms
 from torch.distributions import Normal, Categorical
 from torch.utils.data import DataLoader
 # from mdrnn.learning import ReduceLROnPlateau
-from utility.loaders import RolloutSequenceDataset
+from utility.mdrnn_loaders import RolloutSequenceDataset
 from mdrnn.learning import EarlyStopping
 
 
@@ -303,7 +303,7 @@ class MDRNNTrainer:
         for i, batch in enumerate(loader):
             latent_obs, actions, rewards, terminals, latent_next_obs = self._extract_batch_data(batch)
 
-            if self.batch_train_idx % self.N_train_batch_until_test_batch == 0:
+            if self._is_batch_testing():
                 batch_test_loader = self._test_batch(batch_test_loader, include_reward)
                 last_tested_batch_idx = self.batch_train_idx
 
@@ -316,7 +316,11 @@ class MDRNNTrainer:
             batch_latent_loss = losses['gmm'] / self.config['latent_size']
 
             self._log_batch_loss(batch_loss, batch_reward_loss, batch_terminal_loss, batch_latent_loss, self.baseline_train_loss, is_train=True)
-            if self.batch_train_idx % self.N_train_batch_until_pred_sampling == 0 or self.batch_train_idx == 0:
+
+            if self._loss_is_above_threshold(losses):
+                print(f'Loss above threshold {losses}')
+
+            if self._is_log_sample(losses):
                 self._log_batch_prediction_results(batch_results)
 
             progress_bar.set_postfix_str(f"loss={batch_loss} bce={batch_terminal_loss} gmm={batch_latent_loss} mse={batch_reward_loss}")
@@ -344,6 +348,7 @@ class MDRNNTrainer:
         return cumulative_losses
 
     def _train_step(self, latent_obs, action, reward, terminal, latent_next_obs, include_reward):
+        # reward = self._normalize_rewards(reward)
         losses,  batch_results = self._get_loss(latent_obs, action, reward, terminal, latent_next_obs, include_reward)
         self.optimizer.zero_grad()
         losses['loss'].backward()
@@ -353,6 +358,7 @@ class MDRNNTrainer:
         return losses,  batch_results
 
     def _test_step(self, latent_obs, action, reward, terminal, latent_next_obs, include_reward):
+        # reward = self._normalize_rewards(reward)
         with torch.no_grad():
             return self._get_loss(latent_obs, action, reward, terminal, latent_next_obs, include_reward)
 
@@ -370,7 +376,11 @@ class MDRNNTrainer:
 
         batch_loss, batch_reward_loss, batch_terminal_loss, batch_latent_loss = self._extract_batch_loss(losses)
         self._log_batch_loss(batch_loss, batch_reward_loss, batch_terminal_loss, batch_latent_loss, self.baseline_test_loss, is_train=False)
-        if self.batch_train_idx % self.N_train_batch_until_pred_sampling == 0 or self.batch_train_idx == 0:
+
+        if self._loss_is_above_threshold(losses):
+            print(f'Loss above threshold {losses}')
+
+        if self._is_log_sample(losses):
             self._log_batch_prediction_results(batch_results, is_train=False)
 
         self.mdrnn.train()
@@ -440,6 +450,12 @@ class MDRNNTrainer:
                                            [(obs_mu, obs_logsigma), (next_obs_mu, next_obs_logsigma)]]
         return latent_obs, latent_next_obs
 
+    def _normalize_rewards(self, rewards):
+        for batch in rewards:
+            for i, reward in enumerate(batch):
+                batch[i] = -1 if reward == -100 else reward
+        return rewards
+
     def _update_cumulative_losses(self, cumulative_losses, current_losses):
         cumulative_losses['loss'] += current_losses['loss'].item()
         cumulative_losses['latent_loss'] += current_losses['gmm'].item()
@@ -448,9 +464,29 @@ class MDRNNTrainer:
                                                                          else current_losses['mse']
         return cumulative_losses
 
+    def _is_batch_testing(self):
+        is_initial = self.batch_train_idx == 0
+        is_batch_idx_equals_test = self.batch_train_idx % self.N_train_batch_until_test_batch == 0
+        return is_initial or is_batch_idx_equals_test
+
+    def _is_log_sample(self, losses=None):
+        is_initial = self.batch_train_idx == 0
+        is_batch_idx_equals_sampling = self.batch_train_idx % self.N_train_batch_until_pred_sampling == 0
+        is_loss_above_treshold = self._loss_is_above_threshold(losses) if losses else False
+
+        return is_initial or is_batch_idx_equals_sampling or is_loss_above_treshold
+
+    def _loss_is_above_threshold(self, losses):
+        loss_alert_threshold = 2  # general loss seems to be below 2 so anything above is suspecious
+        for loss_key in losses:
+            loss = losses[loss_key] / self.latent_size if loss_key == 'gmm' else losses[loss_key]
+            if loss > loss_alert_threshold:
+                return True
+        return False
+
     def _extract_epoch_loss(self, cumulative_losses, loader):
         loss = cumulative_losses['loss'] * self.batch_size / len(loader.dataset)
-        latent_loss = cumulative_losses['latent_loss'] * self.batch_size / len(loader.dataset)
+        latent_loss = cumulative_losses['latent_loss'] / self.config['latent_size'] * self.batch_size / len(loader.dataset)
         terminal_loss = cumulative_losses['terminal_loss'] * self.batch_size / len(loader.dataset)
         reward_loss = cumulative_losses['reward_loss'] * self.batch_size / len(loader.dataset)
         return loss, latent_loss, terminal_loss, reward_loss
@@ -574,12 +610,24 @@ class MDRNNTrainer:
         return pred_latent_z_samples
 
     def _sample_next_z(self, z_means, z_standard_deviations, log_mixture_weights):  # input: (1, 1, 5, 32) --> (seq_len, batch_size, num_gaussians, latent_size)
+        temperature = 1.15   # https://worldmodels.github.io/
+        log_mixture_weights = self._adjust_mixture_weights_by_temperature(log_mixture_weights, temperature)
         random_gaussian_mixture_index = Categorical(log_mixture_weights).sample().item()
         sampled_mean = z_means[:, :, random_gaussian_mixture_index, :]
         sampled_standard_deviation = z_standard_deviations[:, :, random_gaussian_mixture_index, :]
-        random_gaussian_noise = torch.randn_like(z_means[:, :, random_gaussian_mixture_index, :])  #* torch.sqrt(torch.as_tensor(self.temperature))
+        random_gaussian_noise = torch.randn_like(z_means[:, :, random_gaussian_mixture_index, :])  #* torch.sqrt(torch.as_tensor(temperature))
+        random_gaussian_noise = random_gaussian_noise * torch.sqrt(torch.as_tensor(temperature))
         next_latent_z = sampled_mean + sampled_standard_deviation * random_gaussian_noise
         return next_latent_z.squeeze(0)  # (1, 1, 32) --> (1, 32)
+
+    def _adjust_mixture_weights_by_temperature(self, log_mixture_weights, temperature):
+        # Paper: https://arxiv.org/pdf/1704.03477.pdf
+        # Code: https://github.com/tensorflow/magenta/blob/master/magenta/models/sketch_rnn/model.py
+        log_mixture_weights /= temperature
+        log_mixture_weights -= log_mixture_weights.max()
+        log_mixture_weights = torch.exp(log_mixture_weights)
+        log_mixture_weights /= log_mixture_weights.sum()  # Softmax normalize
+        return log_mixture_weights
 
     def _decode_latent_z(self, latent_z):
         with torch.no_grad():
