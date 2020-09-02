@@ -239,7 +239,7 @@ class MDRNNTrainer:
 
         self.train_loader = DataLoader(dataset=train_dataset,
                                        batch_size=self.config['mdrnn_trainer']['batch_size'],
-                                       num_workers=self.num_workers, shuffle=False, drop_last=True)
+                                       num_workers=self.num_workers, shuffle=True, drop_last=True)
 
     def _get_scheduler(self, optimizer):
         return ReduceLROnPlateau(optimizer,

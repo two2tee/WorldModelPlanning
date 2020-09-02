@@ -25,7 +25,7 @@ class SimulatedPlanningController:
 
     def _get_action_placeholder(self):
         if self.config['game'] == 'CarRacing-v0':
-            return np.array([0., 0., 0.])
+            return np.array([0., 0., 0.], dtype=np.float32)
         if self.config['game'] == 'viz-doom':
             return [-1]
         raise Exception(f'No implementation of game controller was found for game: {self.config["game"]}')

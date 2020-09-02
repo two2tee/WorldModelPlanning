@@ -1,6 +1,8 @@
 import time
+from tqdm import tqdm
 from tests.base_planning_tester import BasePlanningTester, TEST_NAME, ELITES, CUSTOM_SEED, ACTION_HISTORY
 from gym.envs.box2d.car_dynamics import Car
+import math
 
 # custom args
 OPTIMAL_STEPS = 'optimal_steps'
@@ -91,7 +93,11 @@ class PlanningTester(BasePlanningTester):
 
         negative_counter = 0
         is_done = False
-        for step in range(args['optimal_steps'] + 75):
+
+        total_steps = args['optimal_steps'] + 75
+        max_negative_count = self.config['test_suite']['car_racing']['max_negative_count']
+        progress_bar = tqdm(total=total_steps)
+        for step in range(total_steps):
             action, step_elites = self._search_action(latent_state, hidden_state)
             elites.append(step_elites)
 
@@ -99,7 +105,7 @@ class PlanningTester(BasePlanningTester):
 
             self._simulate_dream(self.planning_agent.current_elite.action_sequence, current_state, hidden_state)
 
-            if is_done or negative_counter == self.config['test_suite']['car_racing']['max_negative_count']:
+            if is_done or negative_counter == max_negative_count:
                 break
 
             current_state, reward, is_done, simulated_reward, simulated_is_done, latent_state, hidden_state = \
@@ -112,6 +118,10 @@ class PlanningTester(BasePlanningTester):
             elapsed_time = time.time() - start_time
             self._update_trial_results(trial_results_dto, reward, total_reward, steps_ran)
 
+            progress_bar.set_postfix_str(f"action={action} | total_reward={round(total_reward,3)} | max_reward {round(trial_results_dto['max_reward'],3)} | negative_counter={negative_counter}/{max_negative_count}")
+            progress_bar.update(n=1)
+
+        progress_bar.close()
         self._print_trial_results(trial_i, elapsed_time, total_reward, steps_ran, trial_results_dto)
         return elites, action_history, total_reward, trial_results_dto['max_reward'], seed
 
@@ -146,7 +156,7 @@ class PlanningTester(BasePlanningTester):
 
     def _render_fitness_and_trajory(self, current_state, step_elites):
         if self.is_render_fitness:
-            self.visualizer.show_fitness_plot(max_generations=len(step_elites)-1, elites=step_elites, agent=self.config['planning']['planning_agent'])
+            self.visualizer.show_fitness_plot(max_generation=len(step_elites)-1, elites=step_elites, agent=self.config['planning']['planning_agent'])
 
         if self.is_render_trajectory:
             self.visualizer.show_trajectory_plot(current_state, step_elites, self.config['planning']['planning_agent'],
