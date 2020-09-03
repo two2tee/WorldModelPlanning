@@ -62,7 +62,7 @@ class BasePlanningTester(BaseTester):
 
     def _run_new_session(self):
         print('\n--- RUNNING NEW PLANNING TESTS ---')
-        return self._run_multithread_new_test_session() if self.is_multithread_tests and not self.is_render else \
+        return self._run_multithread_new_test_session() if self.is_multithread_tests else \
             self._run_singlethread_new_test_session()
 
     def _restore_agent(self, agent_type, params):

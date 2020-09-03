@@ -1,12 +1,12 @@
 {
     "game": "CarRacing-v0",
-    "experiment_name": "World_Model_Random",
+    "experiment_name": "World_Model_RandomNormal",
     "forced_vae": "World_Model_Random",
     "latent_size": 64,
     "num_reconstructions": 64,
-    "is_generate_data": true,
+    "is_generate_data": false,
     "is_train_vae": false,
-    "is_train_mdrnn": false,
+    "is_train_mdrnn": true,
     "is_iterative_train_mdrnn": false,
     "is_ntbea_param_tune": false,
     "is_play": false,
@@ -38,7 +38,7 @@
         "RHEA_crossover_methods_options": ["uniform","1_bit","2_bit"]
     },
     "visualization": {
-        "is_render": false,
+        "is_render": true,
         "is_render_trajectory": false,
         "is_render_best_elite_only": false,
         "is_render_fitness": false,
@@ -222,7 +222,7 @@
         "is_discretize_sampling": false,
         "rolling_horizon": {
             "population_size": 8,
-            "horizon": 10,
+            "horizon": 20,
             "max_generations": 15,
             "is_shift_buffer": false,
             "is_rollout": false,
@@ -232,7 +232,7 @@
             "is_delta_sampling": false
         },
         "random_mutation_hill_climb": {
-            "horizon": 10,
+            "horizon": 20,
             "max_generations": 15,
             "is_shift_buffer": false,
             "is_rollout": false,
