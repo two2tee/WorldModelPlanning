@@ -33,3 +33,13 @@ class CarRacingEnvironment(BaseEnvironment):
         obs, _, _, _ = self.step([0, 0, 0])
         return obs
 
+    def step(self, action, ignore_is_done=False):
+        state, reward, is_done, info = super().step(action, ignore_is_done)
+        return state, self._standardize_reward(reward), is_done, info
+
+
+    def _standardize_reward(self, reward):
+        reward = 3.0 if reward > 3 else reward
+        return round(reward, 1)
+
+
