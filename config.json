@@ -154,7 +154,7 @@
         "num_gaussians": 5
     },
     "mdrnn_trainer":{
-        "max_epochs": 40,
+        "max_epochs": 60,
         "learning_rate": 0.001,
         "gradient_clip": 1.0,
         "sequence_length": 500,
