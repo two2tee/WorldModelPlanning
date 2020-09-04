@@ -9,14 +9,24 @@ class PlanningLogger(BaseLogger):
         super().__init__(is_logging)
         self._planning_test_writer = None
 
+    def log_trial_rewards(self, test_name, trial_idx, total_reward, max_reward):
+        self._add_scalar(f"{test_name}/Max reward per trial", max_reward, trial_idx)
+        self._add_scalar(f"{test_name}/Total reward per trial", total_reward, trial_idx)
 
-    def log_iteration_max_reward(self, name, iteration, max_reward):
-        title = f"{name}/Average Max reward"
+    def log_custom_trial_results(self, test_name, trial_idx, results):
+        self._add_text(tag=f'{test_name}/{results}', value=results, step=trial_idx)
+
+    def log_agent_settings(self, test_name, agent, settings):
+        self._add_text(tag=f'{test_name}/{agent}', value=settings, step=0)
+
+    def log_iteration_max_reward(self, test_name, trials, iteration, max_reward):
+        title = f"{test_name}/Average Max reward  of {trials} trials"
         self._add_scalar(title, max_reward, iteration)
 
-    def log_iteration_avg_reward(self, name, iteration, avg_reward):
-        title = f"{name}/Average Total reward"
+    def log_iteration_avg_reward(self, test_name, trials, iteration, avg_reward):
+        title = f"{test_name}/Average Total reward of {trials} trials"
         self._add_scalar(title, avg_reward, iteration)
+
 
     def start_log(self, name):
         if not self._is_logging:
@@ -33,6 +43,11 @@ class PlanningLogger(BaseLogger):
             return
         self.commit_log()
         self._planning_test_writer.close()
+
+    def _add_text(self, tag, value, step):
+        if not self._is_logging:
+            return
+        self._planning_test_writer.add_text(tag=tag, text_string=value, global_step=step)
 
     def _add_scalar(self, tag, value, step):
         if not self._is_logging:

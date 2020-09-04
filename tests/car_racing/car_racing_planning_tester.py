@@ -34,37 +34,37 @@ class PlanningTester(BasePlanningTester):
     # TEST METHODS #######################################
 
     def _planning_forward_test(self, args):
-        args[TEST_NAME] = '----- Forward planning test ------'
+        args[TEST_NAME] = 'Forward planning test'
         args[START_TRACK] = 25
         return self._run_plan_or_replay(args=args)
 
     def _planning_left_turn_test(self, args):
-        args[TEST_NAME] = '----- Left Turn planning test ------'
+        args[TEST_NAME] = 'Left Turn planning test'
         args[START_TRACK] = 14
         return self._run_plan_or_replay(args=args)
 
     def _planning_right_turn_test(self, args):
-        args[TEST_NAME] = '----- Right Turn planning test ------'
+        args[TEST_NAME] = 'Right Turn planning test'
         args[START_TRACK] = 222
         return self._run_plan_or_replay(args=args)
 
     def _planning_u_turn_test(self, args):
-        args[TEST_NAME] = '----- U-Turn planning test ------'
+        args[TEST_NAME] = 'U-Turn planning test'
         args[START_TRACK] = 103
         return self._run_plan_or_replay(args=args)
 
     def _planning_s_turn_test(self, args):
-        args[TEST_NAME] = '----- S-Turn planning test ------'
+        args[TEST_NAME] = 'S-Turn planning test'
         args[START_TRACK] = 250
         return self._run_plan_or_replay(args=args)
 
     def _planning_whole_track_no_right_turns_test(self, args):
-        args[TEST_NAME] = '----- Whole track (No right turns) planning test ------'
+        args[TEST_NAME] = 'Whole track (No right turns) planning test'
         args[START_TRACK] = 1
         return self._run_plan_or_replay(args=args)
 
     def _planning_whole_random_track_test(self, args):
-        args[TEST_NAME] = '----- Whole random track planning test ------'
+        args[TEST_NAME] = 'Whole random track planning test'
         args[START_TRACK] = 1
         return self._run_plan_or_replay(args=args)
 
@@ -120,8 +120,8 @@ class PlanningTester(BasePlanningTester):
             progress_bar.update(n=1)
 
         progress_bar.close()
-        self._print_trial_results(trial_i, elapsed_time, total_reward, steps_ran, trial_results_dto)
-        return elites, action_history, total_reward, trial_results_dto['max_reward'], seed
+        custom_message = self._print_trial_results(trial_i, elapsed_time, total_reward, steps_ran, trial_results_dto)
+        return elites, action_history, total_reward, trial_results_dto['max_reward'], seed, custom_message
 
     def _replay_planning_test(self, args):
         actions = args[ACTION_HISTORY]
@@ -221,10 +221,11 @@ class PlanningTester(BasePlanningTester):
         elapsed_time_str = '' if elapsed_time is None else f'Elapsed_time: {round(elapsed_time,0)}'
         success_str = f'Test success: {test_success} | Reward at success: {reward_at_success} | Steps on Success: {steps_at_success}\n' \
             if test_success else f'Test success: {test_success}\n'
-        print(
-            f'\n\nRESULTS FOR: {test_name}\n{trial_str} | {elapsed_time_str}\n'
-            f'Total reward: {round(total_reward, 2)} | Max reward: {trial_results_dto["max_reward"]} |  Steps on exit: {steps_ran}\n'
-            f'{success_str}'
-            f'Agent reward at optimal step {optimal_steps} : {reward_at_optimum_steps}\n'
-            f'Manual drive reward at  step {optimal_steps} : {optimal_reward} | Reward Diff: {optimal_reward_diff} %\n'
-            f'Random drive reward at  step {optimal_steps} : {random_reward}  | Reward Diff: {random_reward_diff} %')
+        message = f'Elapsed_time: {elapsed_time_str}\n' \
+                  f'| Total reward: {round(total_reward, 2)} | Max reward: {round(trial_results_dto["max_reward"],2)} |  Steps on exit: {steps_ran}\n' \
+                  f'| {success_str}' \
+                  f'| Agent reward at optimal step {optimal_steps} : {reward_at_optimum_steps}\n' \
+                  f'| Manual drive reward at  step {optimal_steps} : {optimal_reward} | Reward Diff: {optimal_reward_diff} %\n' \
+                  f'| Random drive reward at  step {optimal_steps} : {random_reward}  | Reward Diff: {random_reward_diff} %'
+        print(message)
+        return message

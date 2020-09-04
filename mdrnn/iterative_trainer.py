@@ -155,7 +155,9 @@ class IterativeTrainer:
         vae, mdrnn = self._get_vae_mdrnn()
         environment = get_environment(self.config)  # Set environment
         tester = get_planning_tester(self.config, vae, mdrnn, preprocessor, environment, self.planning_agent)
-        test_name, trials_actions, trials_rewards, trials_elites, trial_max_rewards, trial_seeds = tester.run_specific_test(self.test_scenario)
+
+        session_name = self._make_session_name(self.config["experiment_name"], self.config['planning']['planning_agent'], iteration)
+        test_name, trials_actions, trials_rewards, trials_elites, trial_max_rewards, trial_seeds = tester.run_specific_test(self.test_scenario, session_name)
         environment.close()
 
         iteration_result = iteration_results[iteration]
@@ -215,12 +217,11 @@ class IterativeTrainer:
         self.test_lock.acquire()
         try:
             logger = PlanningLogger(is_logging=True)
-            logger.start_log(name=f'{iteration_result.agent_name}_{self.config["experiment_name"]}')
+            logger.start_log(name=f'{self._make_session_name(self.config["experiment_name"], iteration_result.agent_name, iteration_result.iteration)}')
 
-            title = f'{iteration_result.test_name}_trials_{iteration_result.total_trials}'
-            logger.log_iteration_max_reward(name=title,
+            logger.log_iteration_max_reward(test_name=iteration_result.test_name, trials=iteration_result.iteration_result.total_trials,
                                                  iteration=iteration_result.iteration, max_reward=iteration_result.get_average_max_reward())
-            logger.log_iteration_avg_reward(name=title,
+            logger.log_iteration_avg_reward(test_name=iteration_result.test_name, trials=iteration_result.iteration_result.total_trials,
                                             iteration=iteration_result.iteration, avg_reward=iteration_result.get_average_total_reward())
             logger.end_log()
 
@@ -261,3 +262,5 @@ class IterativeTrainer:
         torch.set_num_threads(threads)
         os.environ['OMP_NUM_THREADS'] = str(threads)  # Inference in CPU to avoid cpu scheduling - slow parallel data generation
 
+    def _make_session_name(self, model_name, agent_name,  iteration):
+        return f'{model_name}_{agent_name}_iteration_{iteration}'

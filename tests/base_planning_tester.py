@@ -6,11 +6,12 @@ from pprint import pprint
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
-from datetime import date
+from datetime import date, datetime
 from os.path import exists, join
 from torch import multiprocessing
 from tests.base_tester import BaseTester
 from utility.visualizer import Visualizer
+from utility.logging.planning_logger import PlanningLogger
 from planning.simulation.mcts_simulation import MCTS as MCTS_simulation
 from planning.simulation.rolling_horizon_simulation import RHEA as RHEA_simulation
 from planning.simulation.random_mutation_hill_climbing_simulation import RMHC as RMHC_simulation
@@ -21,7 +22,6 @@ ACTION_HISTORY = 'action_history'
 ELITES = 'elites'
 CUSTOM_SEED = 'custom_seed'
 TEST_NAME = 'test_name'
-
 
 class BasePlanningTester(BaseTester):
     def __init__(self, config, vae, mdrnn, preprocessor, environment, planning_agent):
@@ -35,7 +35,7 @@ class BasePlanningTester(BaseTester):
         self.is_render = config['visualization']['is_render']
         self.is_render_simulation = self.config['visualization']['is_render_simulation']
         self.is_render_dream = self.config['visualization']['is_render_dream']
-
+        self.session_name = self._make_session_name()
 
         torch.set_num_threads(1)
         os.environ['OMP_NUM_THREADS'] = '1'
@@ -51,7 +51,6 @@ class BasePlanningTester(BaseTester):
 
     def _replay_planning_test(self, args):
         return NotImplemented
-
 
     def _get_trial_results_dto(self, args):
         return {
@@ -75,7 +74,8 @@ class BasePlanningTester(BaseTester):
         else:
             raise Exception(f'Invalid agent type: {agent_type}')
 
-    def run_tests(self):
+    def run_tests(self, session_name=None):
+        self.session_name = self._make_session_name(session_name)
         print('------- Planning Tests params --------')
         print(f'seed: {self.seed} | trials per test: {self.trials}')
         print(f'Planning Agent: {type(self.planning_agent)}')
@@ -86,7 +86,8 @@ class BasePlanningTester(BaseTester):
         else:
             return self._run_new_session()
 
-    def run_specific_test(self, test_name):
+    def run_specific_test(self, test_name, session_name=None):
+        self.session_name = self._make_session_name(session_name)
         with torch.no_grad():
             test_func, args = self.get_test_functions()[test_name]
             trial_actions, trial_rewards, trial_elites, trial_max_rewards, trial_seeds = test_func(args=args)
@@ -132,13 +133,16 @@ class BasePlanningTester(BaseTester):
         trial_elites = []
         trial_seeds = []
         seed = args[CUSTOM_SEED]
+        logger = PlanningLogger(is_logging=True)
+        logger.start_log(name=self.session_name)
+        logger.log_agent_settings(test_name=args[TEST_NAME], agent=self.config['planning']['planning_agent'], settings=f'{vars(self.planning_agent)}')
 
         if self.is_multithread_trials:
             return NotImplemented # TODO FIX
             with ProcessPoolExecutor(max_workers=multiprocessing.cpu_count()) as executor:
                 func_input = [(trial_i, args, seed) for trial_i in range(self.trials)]
                 thread_results = list(executor.map(self._run_trial, func_input))
-                for elites, action_history, total_reward, max_reward, seed in thread_results:
+                for elites, action_history, total_reward, max_reward, seed, custom_message in thread_results:
                     trial_actions.append(action_history)
                     trial_rewards.append(total_reward)
                     trial_max_rewards.append(max_reward)
@@ -146,12 +150,14 @@ class BasePlanningTester(BaseTester):
                     trial_seeds.append(seed)
         else:
             for i in tqdm(range(self.trials), desc=f'Planning Test on {args[TEST_NAME]} with {self.trials} trials'):
-                elites, action_history, total_reward, max_reward, seed = self._run_trial(i, args, seed)
+                elites, action_history, total_reward, max_reward, seed, custom_message = self._run_trial(i, args, seed)
                 trial_actions.append(action_history)
                 trial_rewards.append(total_reward)
                 trial_max_rewards.append(max_reward)
                 trial_elites.append(elites)
                 trial_seeds.append(seed)
+                logger.log_trial_rewards(test_name=args[TEST_NAME], trial_idx=i, total_reward=total_reward, max_reward=max_reward)
+                logger.log_custom_trial_results(test_name=args[TEST_NAME], trial_idx=i, results=custom_message)
 
         return trial_actions, trial_rewards, trial_elites, trial_max_rewards, trial_seeds
 
@@ -268,3 +274,9 @@ class BasePlanningTester(BaseTester):
 
         index_max = np.argmax(trial_rewards)
         return index_max+1, trial_actions[index_max], trial_rewards[index_max], trial_elites[index_max], trial_seeds[index_max] if trial_seeds else None
+
+    def _make_session_name(self, custom_name=None):
+        config_name = self.config['experiment_name']
+        agent_name = self.config['planning']['planning_agent']
+        date = datetime.now().strftime("%Y_%m_%d_%H_%M")
+        return f'{custom_name if custom_name else f"{config_name}_{date}_{agent_name}"}'
