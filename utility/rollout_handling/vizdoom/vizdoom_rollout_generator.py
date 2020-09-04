@@ -1,6 +1,6 @@
 import numpy as np
 from tqdm import tqdm
-from utility.base_rollout_generator import BaseRolloutGenerator
+from utility.rollout_handling.base_rollout_generator import BaseRolloutGenerator
 
 
 
@@ -35,7 +35,6 @@ class RolloutGenerator(BaseRolloutGenerator):
 
 
     def _render(self, environment, obs, action, reward, done):
-        import matplotlib.pyplot as plt
         environment.render()
         # plt.imshow(obs)
         # plt.pause(0.001)

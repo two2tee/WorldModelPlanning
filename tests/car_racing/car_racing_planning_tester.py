@@ -15,8 +15,6 @@ class PlanningTester(BasePlanningTester):
     def __init__(self, config, vae, mdrnn, preprocessor, environment, planning_agent):
         super().__init__(config, vae, mdrnn, preprocessor, environment, planning_agent)
         self.environment.is_random_inital_car_position = False
-        self.car_forward_velocity_approx = 0
-        self.velocity_growth_penalizer = 0.005
         self.is_render_best_elite_only = self.config['visualization']['is_render_best_elite_only']
         self.is_render_fitness = self.config['visualization']['is_render_fitness']
         self.is_render_trajectory = self.config['visualization']['is_render_trajectory']

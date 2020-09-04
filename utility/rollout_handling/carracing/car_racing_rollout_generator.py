@@ -1,11 +1,9 @@
 import os
-import random
-import gym
 import numpy as np
 
 from tqdm import tqdm
 from gym.envs.box2d.car_dynamics import Car
-from utility.base_rollout_generator import BaseRolloutGenerator
+from utility.rollout_handling.base_rollout_generator import BaseRolloutGenerator
 
 
 class RolloutGenerator(BaseRolloutGenerator):
@@ -57,7 +55,7 @@ class RolloutGenerator(BaseRolloutGenerator):
         return obs, reward, done, info, action
 
     def _get_model(self):
-        from utility.carracing.ha_implementation.model import Model
+        from utility.rollout_handling.carracing.ha_implementation.model import Model
         model = Model(load_model=True)
         model.load_model(f"{os.getcwd()}/utility/carracing/ha_implementation/log/carracing.cma.16.64.best.json")
         return model

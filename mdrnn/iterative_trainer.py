@@ -29,7 +29,7 @@ from utility.preprocessor import Preprocessor
 from tests.test_suite_factory import get_planning_tester
 from planning.simulation.agent_wrapper import AgentWrapper
 from environment.environment_factory import get_environment
-from utility.tensorboard_handler import TensorboardHandler
+from utility.logging.planning_logger import PlanningLogger
 from torch.multiprocessing import Pool, Process, Manager, RLock, Lock
 from mdrnn.iteration_stats.iteration_result import IterationResult
 from environment.actions.action_sampler_factory import get_action_sampler
@@ -61,7 +61,6 @@ class IterativeTrainer:
         self.max_buffer_size = config["iterative_trainer"]["replay_buffer"]['max_buffer_size']
         self.replay_buffer_count = self._get_replay_buffer_size()
         self.test_lock = Lock()
-
 
         if not exists(self.iteration_stats_dir):
             os.mkdir(self.iteration_stats_dir)
@@ -215,8 +214,8 @@ class IterativeTrainer:
     def _log_iteration_test_results(self, iteration_result):
         self.test_lock.acquire()
         try:
-            logger = TensorboardHandler(is_logging=True)
-            logger.start_log(name=f'{iteration_result.agent_name}_{self.config["experiment_name"]}_iterative_planning_test_results')
+            logger = PlanningLogger(is_logging=True)
+            logger.start_log(name=f'{iteration_result.agent_name}_{self.config["experiment_name"]}')
 
             title = f'{iteration_result.test_name}_trials_{iteration_result.total_trials}'
             logger.log_iteration_max_reward(name=title,

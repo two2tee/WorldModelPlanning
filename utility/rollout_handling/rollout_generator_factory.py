@@ -1,5 +1,5 @@
-from utility.carracing.car_racing_rollout_generator import RolloutGenerator as CarRacingRolloutGenerator
-from utility.vizdoom.vizdoom_rollout_generator import RolloutGenerator as VizDoomRolloutGenerator
+from utility.rollout_handling.carracing.car_racing_rollout_generator import RolloutGenerator as CarRacingRolloutGenerator
+from utility.rollout_handling.vizdoom.vizdoom_rollout_generator import RolloutGenerator as VizDoomRolloutGenerator
 
 def get_rollout_generator(config):
     if config['game'] == 'CarRacing-v0':

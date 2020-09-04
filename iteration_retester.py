@@ -17,7 +17,7 @@ from vae.vae import VAE
 from vae.vae_trainer import VaeTrainer
 from mdrnn.mdrnn import MDRNN
 from utility.preprocessor import Preprocessor
-from utility.tensorboard_handler import TensorboardHandler
+from utility.logging.planning_logger import PlanningLogger
 from planning.simulation.mcts_simulation import MCTS as MCTS_simulation
 from planning.simulation.rolling_horizon_simulation import RHEA as RHEA_simulation
 from planning.simulation.random_mutation_hill_climbing_simulation import RMHC as RMHC_simulation
@@ -56,7 +56,7 @@ def get_digit_from_path(path):
 
 
 def log_iteration_test_results(iteration_result, experiment_name):
-    logger = TensorboardHandler(is_logging=True)
+    logger = PlanningLogger(is_logging=True)
     logger.start_log(name=f'{experiment_name}_iterative_planning_test_results')
 
     title = f'Iterative_Planning_Tests_Results_{iteration_result.test_name}_trials_{iteration_result.total_trials}'
@@ -98,8 +98,7 @@ os.environ['OMP_NUM_THREADS'] = str(1)  # Inference in CPU to avoid cpu scheduli
 experiment_names = ['World_Model_D']#, 'World_Model_B', 'World_Model_C', 'World_Model_D']
 for experiment_name in experiment_names:
     frame_preprocessor = Preprocessor(config['preprocessor'])
-
-    vae_trainer = VaeTrainer(config, frame_preprocessor, TensorboardHandler(is_logging=True))
+    vae_trainer = VaeTrainer(config, frame_preprocessor)
     vae = VAE(config)
     vae = vae_trainer.reload_model(vae)
 

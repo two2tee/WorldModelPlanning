@@ -21,9 +21,9 @@ from os.path import join, exists
 from torchvision import transforms
 from torch.distributions import Normal, Categorical
 from torch.utils.data import DataLoader
-# from mdrnn.learning import ReduceLROnPlateau
-from utility.mdrnn_loaders import RolloutSequenceDataset
 from mdrnn.learning import EarlyStopping
+from utility.logging.model_training_logger import ModelTrainingLogger
+from utility.rollout_handling.mdrnn_loaders import RolloutSequenceDataset
 
 
 def transform(frames):
@@ -62,10 +62,10 @@ def gmm_loss(latent_next_obs, mus, sigmas, logpi, reduce=True):
 
 
 class MDRNNTrainer:
-    def __init__(self, config, preprocessor, logger):
+    def __init__(self, config, preprocessor):
         self.config = config
         self.device = self._set_device()
-        self.logger = logger
+        self.logger = ModelTrainingLogger(is_logging=True)
         self.preprocessor = preprocessor
         self.vae = None
         self.mdrnn = None

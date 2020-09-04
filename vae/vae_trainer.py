@@ -13,17 +13,18 @@ from torch import optim
 from torch.nn import functional as F
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-from utility.vae_loader import RolloutObservationDataset
+from utility.logging.model_training_logger import ModelTrainingLogger
+from utility.rollout_handling.vae_loader import RolloutObservationDataset
 sys.path.append("..")
 
 
 class VaeTrainer:
-    def __init__(self, config, preprocesser, logger):
+    def __init__(self, config, preprocesser):
         torch.backends.cudnn.benchmark = True
         self.config = config
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.vae = None
-        self.logger = logger
+        self.logger = ModelTrainingLogger(is_logging=True)
         self.vae_name = self.config['forced_vae'] if self.config['forced_vae'] else self.config['experiment_name'].replace('iterative_', '')
         self.session_name = 'vae_'+self.config['experiment_name'].replace('iterative_', '')
         self.preprocessor = preprocesser
