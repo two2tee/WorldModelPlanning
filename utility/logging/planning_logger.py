@@ -14,7 +14,7 @@ class PlanningLogger(BaseLogger):
         self._add_scalar(f"{test_name}/Total reward per trial", total_reward, trial_idx)
 
     def log_custom_trial_results(self, test_name, trial_idx, results):
-        self._add_text(tag=f'{test_name}/{results}', value=results, step=trial_idx)
+        self._add_text(tag=f'{test_name}/results ', value=results, step=trial_idx)
 
     def log_agent_settings(self, test_name, agent, settings):
         self._add_text(tag=f'{test_name}/{agent}', value=settings, step=0)
