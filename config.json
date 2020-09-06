@@ -1,12 +1,12 @@
 {
     "game": "CarRacing-v0",
-    "experiment_name": "World_Model_RandomNormal",
+    "experiment_name": "World_Model_RandomNormal2",
     "forced_vae": "World_Model_Random",
     "latent_size": 64,
     "num_reconstructions": 64,
     "is_generate_data": false,
     "is_train_vae": false,
-    "is_train_mdrnn": false,
+    "is_train_mdrnn": true,
     "is_iterative_train_mdrnn": false,
     "is_ntbea_param_tune": false,
     "is_play": false,
@@ -48,7 +48,7 @@
     },
     "test_suite": {
         "is_run_model_tests": false,
-        "is_run_planning_tests":  true,
+        "is_run_planning_tests":  false,
         "is_reload_planning_session": false,
         "trials": 30,
         "is_multithread_tests": false,
@@ -169,7 +169,7 @@
         "mdrnn_best_filename": "mdrnn_best.tar",
         "mdrnn_checkpoint_filename": "mdrnn_checkpoint.tar",
         "N_train_batch_until_test_batch": 5,
-        "N_train_batch_until_pred_sampling": 25,
+        "N_train_batch_until_pred_sampling": 100,
         "is_random_sampling": false,
         "early_stop_after_n_epochs": 4,
         "ReduceLROnPlateau": {
