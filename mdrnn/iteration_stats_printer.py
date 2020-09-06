@@ -6,7 +6,7 @@
 import pickle
 from os.path import exists
 from iteration_stats.iteration_result import IterationResult
-from utility.tensorboard_handler import TensorboardHandler
+from utility.logging.tensorboard_handler import TensorboardHandler
 
 def log_iteration_test_results(iteration_result, experiment_name):
     logger = TensorboardHandler(is_logging=True)

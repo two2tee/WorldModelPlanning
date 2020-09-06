@@ -13,11 +13,11 @@ class AbstractRollingHorizon(ABC):
     @abstractmethod
     def __init__(self, population_size, horizon, max_generations, is_shift_buffer, is_rollout, max_rollouts=1, rollout_length=None) -> None:
         self.horizon = horizon
-        self.is_rollout = is_rollout
-        self.max_rollouts = max_rollouts
         self.population_size = population_size
         self.max_generations = max_generations
         self.is_shift_buffer = is_shift_buffer
+        self.is_rollout = is_rollout
+        self.max_rollouts = max_rollouts
         self.rollout_length = int(self.horizon / 2) if rollout_length is None else rollout_length
         super().__init__()
 

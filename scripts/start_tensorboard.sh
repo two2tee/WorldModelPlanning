@@ -1,1 +1,1 @@
-tensorboard --logdir ../utility/tensorboard_runs
+tensorboard --logdir ../utility/logging/tensorboard_runs
