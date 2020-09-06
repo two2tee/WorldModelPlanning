@@ -1,6 +1,6 @@
 {
     "game": "CarRacing-v0",
-    "experiment_name": "World_Model_Random",
+    "experiment_name": "World_Model_RandomNormal",
     "forced_vae": "World_Model_Random",
     "latent_size": 64,
     "num_reconstructions": 64,
@@ -55,6 +55,7 @@
         "is_multithread_trials": false,
         "planning_test_log_dir": "planning_test_results",
         "planning_session_to_load": "RHEA_World_Model_L_planning_session_2020-05-20-00.00_total_session_best_reward_804.0589_BEST",
+        "is_logging": true,
         "car_racing": {
             "max_negative_count": 150
         }

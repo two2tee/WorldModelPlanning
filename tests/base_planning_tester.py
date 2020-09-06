@@ -35,6 +35,7 @@ class BasePlanningTester(BaseTester):
         self.is_render = config['visualization']['is_render']
         self.is_render_simulation = self.config['visualization']['is_render_simulation']
         self.is_render_dream = self.config['visualization']['is_render_dream']
+        self.is_logging = self.config['test_suite']['is_logging']
         self.session_name = self._make_session_name()
 
         torch.set_num_threads(1)
@@ -133,7 +134,7 @@ class BasePlanningTester(BaseTester):
         trial_elites = []
         trial_seeds = []
         seed = args[CUSTOM_SEED]
-        logger = PlanningLogger(is_logging=True)
+        logger = PlanningLogger(is_logging=self.is_logging)
         logger.start_log(name=self.session_name)
         logger.log_agent_settings(test_name=args[TEST_NAME], agent=self.config['planning']['planning_agent'], settings=f'{vars(self.planning_agent)}')
 
