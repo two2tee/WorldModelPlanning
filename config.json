@@ -1,6 +1,6 @@
 {
     "game": "CarRacing-v0",
-    "experiment_name": "World_Model_RandomNormal2",
+    "experiment_name": "World_Model_RandomNormal",
     "forced_vae": "World_Model_Random",
     "latent_size": 64,
     "num_reconstructions": 64,
@@ -8,7 +8,7 @@
     "is_train_vae": false,
     "is_train_mdrnn": false,
     "is_iterative_train_mdrnn": false,
-    "is_ntbea_param_tune": false,
+    "is_ntbea_param_tune": true,
     "is_play": false,
     "is_dream_play": false,
     "is_manual_control": false,
