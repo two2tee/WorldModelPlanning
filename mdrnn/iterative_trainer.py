@@ -63,6 +63,7 @@ class IterativeTrainer:
         self.max_buffer_size = config["iterative_trainer"]["replay_buffer"]['max_buffer_size']
         self.replay_buffer_count = self._get_replay_buffer_size()
         self.test_lock = Lock()
+        self.replay_count_lock = Lock()
 
         if not exists(self.iteration_stats_dir):
             os.mkdir(self.iteration_stats_dir)
@@ -107,13 +108,10 @@ class IterativeTrainer:
             [thread.get() for thread in threads]
             pool.close()
 
-        if self.is_replay_buffer:
-            self._set_replay_buffer_count()
-
         print(f'Done - {self.num_rollouts} rollouts saved in {self.data_dir}')
 
     def _set_replay_buffer_count(self):
-        self.replay_buffer_count = 0 if self.replay_buffer_count >= self.max_buffer_size else self.replay_buffer_count + self.num_rollouts
+        self.replay_buffer_count = 1 if self.replay_buffer_count > self.max_buffer_size else self.replay_buffer_count + 1
 
     def _get_replay_buffer_size(self):
         return len([name for root, dirs, files in os.walk(self.data_dir) for name in files])
@@ -124,6 +122,7 @@ class IterativeTrainer:
         for rollout_number in range(1, num_rollouts_per_thread + 1):
             actions, states, rewards, terminals = self._create_rollout(agent_wrapper, environment, thread_id, rollout_number, num_rollouts_per_thread, iteration)
             self._save_rollout(thread_id, rollout_number, actions, states, rewards, terminals)
+
         environment.close()
 
     def _test_planning(self, iteration, iteration_results, test_threads):
@@ -156,7 +155,7 @@ class IterativeTrainer:
         preprocessor = Preprocessor(self.config['preprocessor'])
         vae, mdrnn = self._get_vae_mdrnn()
         environment = get_environment(self.config)  # Set environment
-        tester = get_planning_tester(self.config, vae, mdrnn, preprocessor, environment, self.planning_agent)
+        tester = get_planning_tester(self.config, vae, mdrnn, preprocessor, self.planning_agent)
 
         session_name = self._make_session_name(self.config["experiment_name"], self.config['planning']['planning_agent'], iteration)
         test_name, trials_actions, trials_rewards, trials_elites, trial_max_rewards, trial_seeds = tester.run_specific_test(self.test_scenario, session_name)
@@ -176,7 +175,7 @@ class IterativeTrainer:
         return test_name
 
     def _get_vae_mdrnn(self):
-        vae_trainer = VaeTrainer(self.config, preprocesser=None, logger=None)
+        vae_trainer = VaeTrainer(self.config, preprocesser=None)
         vae = vae_trainer.reload_model(VAE(self.config), device='cpu')
         vae.cpu()
         mdrnn = MDRNN(num_actions=get_action_sampler(self.config).num_actions,
@@ -203,12 +202,17 @@ class IterativeTrainer:
         return actions, states, rewards, terminals
 
     def _save_rollout(self, thread_id, rollout_number, actions, states, rewards, terminals):
-        file_name = f'iterative_thread_{thread_id}_resized_rollout_{rollout_number}_{self.replay_buffer_count if self.replay_buffer_count else ""}'
+        self.replay_count_lock.acquire()
+        file_name = f'iterative_thread_{thread_id}_rollout_{rollout_number}{f"_{self.replay_buffer_count}" if self.replay_buffer_count else ""}'
         np.savez_compressed(file=join(self.data_dir, file_name),
                             observations=np.array(states),
                             rewards=np.array(rewards),
                             actions=np.array(actions),
                             terminals=np.array(terminals))
+        if self.is_replay_buffer:
+            self._set_replay_buffer_count()
+        self.replay_count_lock.release()
+
 
     def _reset(self, environment, agent_wrapper):
         agent_wrapper.reset()
