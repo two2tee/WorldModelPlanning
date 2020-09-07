@@ -1,5 +1,4 @@
 from torch.utils.tensorboard import SummaryWriter
-
 from utility.logging.base_logger import BaseLogger
 
 

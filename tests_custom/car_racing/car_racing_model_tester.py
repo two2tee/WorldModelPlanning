@@ -8,8 +8,8 @@ from environment.simulated_environment import SimulatedEnvironment
 
 
 class ModelTester(BaseTester):
-    def __init__(self, config, vae, mdrnn, preprocessor, environment):
-        super().__init__(config, vae, mdrnn, preprocessor, environment, trials=config["test_suite"]["trials"])
+    def __init__(self, config, vae, mdrnn, preprocessor):
+        super().__init__(config, vae, mdrnn, preprocessor, trials=config["test_suite"]["trials"])
         self.seed = 9214
         self.vae_render = SimulatedEnvironment(self.config, self.vae, self.mdrnn)
 
@@ -107,15 +107,17 @@ class ModelTester(BaseTester):
         self._execute_trial(actions, start_track=250)
 
     def _execute_trial(self, actions, start_track=0):
-        self.environment.is_random_inital_car_position = False
+        environment = self._get_environment()
+        environment.is_random_inital_car_position = False
         self._print_total_steps(actions)
         print(f"Action sequence [(action, repetition),...]: {actions}")
         for _ in range(self.trials):
-            init_state = self.environment.reset(seed=self.seed)
+            init_state = environment.reset(seed=self.seed)
             self.simulated_environment.reset()
             self._set_car_pos(start_track)
             total_reward_real, total_partial_reward_sim, avg_recon_diff, total_full_sim_reward = self._step(actions, init_state)
             self._print_results(total_reward_real, total_full_sim_reward, total_partial_reward_sim, avg_recon_diff)
+        environment.close()
 
     def _step(self, actions, current_state):
         hidden_state = self.simulated_environment.get_hidden_zeros_state()

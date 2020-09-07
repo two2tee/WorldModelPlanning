@@ -11,9 +11,9 @@ def get_planning_agent(config):
 
 
 def _get_planning_agent(agent, config):
-    simulated_agents = {"RHEA": RHEA_simulation(*config['planning']['rolling_horizon']),
-                        "RMHC": RMHC_simulation(*config['planning']['random_mutation_hill_climb']),
-                        "MCTS": MCTS_simulation(*config['planning']['monte_carlo_tree_search']),
+    simulated_agents = {"RHEA": RHEA_simulation(*config['planning']['rolling_horizon'].values()),
+                        "RMHC": RMHC_simulation(*config['planning']['random_mutation_hill_climb'].values()),
+                        "MCTS": MCTS_simulation(*config['planning']['monte_carlo_tree_search'].values()),
                         "RANDOM": RANDOM_simulation()
                         }
     if agent not in simulated_agents:

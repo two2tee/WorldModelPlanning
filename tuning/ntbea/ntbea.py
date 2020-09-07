@@ -351,7 +351,7 @@ class NTupleEvolutionaryAlgorithm():
                 print(f'Current evaluated: {point}')
 
             # Evaluate the point (is repeated several times if n_samples > 0)
-            fitness = np.mean([self._evaluator.evaluate(point) for _ in range(0, self._n_samples)])
+            fitness = self._evaluator.evaluate(point)
 
             self._logger.debug('Evaluated fitness: %.2f at %s' % (fitness, point))
 

@@ -8,7 +8,7 @@
     "is_train_vae": false,
     "is_train_mdrnn": false,
     "is_iterative_train_mdrnn": false,
-    "is_ntbea_param_tune": false,
+    "is_ntbea_param_tune": true,
     "is_play": false,
     "is_dream_play": false,
     "is_manual_control": false,
@@ -18,7 +18,7 @@
     "test_data_dir": "data_test",
     "is_use_specific_test_data": false  ,
     "visualization": {
-        "is_render": true,
+        "is_render": false,
         "is_render_trajectory": false,
         "is_render_best_elite_only": false,
         "is_render_fitness": false,
@@ -28,11 +28,12 @@
     },
     "test_suite": {
         "is_run_model_tests": false,
-        "is_run_planning_tests":  true,
+        "is_run_planning_tests":  false,
         "is_reload_planning_session": false,
         "trials": 30,
         "is_multithread_tests": false,
-        "is_multithread_trials": false,
+        "is_multithread_trials": true,
+        "fixed_cores": null,
         "planning_test_log_dir": "planning_test_results",
         "planning_session_to_load": "RHEA_World_Model_L_planning_session_2020-05-20-00.00_total_session_best_reward_804.0589_BEST",
         "is_logging": true,
@@ -206,7 +207,6 @@
         "explore_rate": 2.0,
         "ucb_random_noise": 0.5,
         "eval_neighbours": 50,
-        "samples_per_eval": 1,
         "shift_buffer_options": [true, false],
         "horizon_options": [5, 10, 15, 20, 25],
         "generation_options": [1, 5, 10, 15, 20, 25],
@@ -219,7 +219,7 @@
         "RHEA_crossover_methods_options": ["uniform","1_bit","2_bit"]
     },
     "planning": {
-        "planning_agent": "RANDOM",
+        "planning_agent": "RMHC",
         "is_discretize_sampling": false,
         "rolling_horizon": {
             "population_size": 8,

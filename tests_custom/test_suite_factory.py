@@ -7,17 +7,17 @@ from tests_custom.car_racing.car_racing_model_tester import ModelTester as CarRa
 from tests_custom.car_racing.car_racing_planning_tester import PlanningTester as CarRacingPlanningTester
 from tests_custom.viz_doom.vizdoom_planning_tester import VizDoomPlanningTester
 
-def get_planning_tester(config, vae, mdrnn, preprocessor, environment, agent):
+def get_planning_tester(config, vae, mdrnn, preprocessor, agent):
     if config['game'] == 'CarRacing-v0':
-        return CarRacingPlanningTester(config, vae, mdrnn, preprocessor, environment, agent)
+        return CarRacingPlanningTester(config, vae, mdrnn, preprocessor, agent)
     if config['game'] == 'vizdoom-v0':
-        return VizDoomPlanningTester(config, vae, mdrnn, preprocessor, environment, agent)
+        return VizDoomPlanningTester(config, vae, mdrnn, preprocessor, agent)
     raise Exception(f'No implementation of planning tester was found for game: {config["game"]}')
 
 
-def get_model_tester(config, vae, mdrnn, preprocessor, environment):
+def get_model_tester(config, vae, mdrnn, preprocessor):
     if config['game'] == 'CarRacing-v0':
-        return CarRacingModelTester(config, vae, mdrnn, preprocessor, environment)
+        return CarRacingModelTester(config, vae, mdrnn, preprocessor)
     if config['game'] == 'vizdoom-v0':
         return NotImplemented()
     raise Exception(f'No implementation of model tester was found for game: {config["game"]}')

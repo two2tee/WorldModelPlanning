@@ -3,8 +3,8 @@ from tests_custom.base_planning_tester import BasePlanningTester, TEST_NAME, ELI
 
 
 class VizDoomPlanningTester(BasePlanningTester):
-    def __init__(self, config, vae, mdrnn, preprocessor, environment, planning_agent):
-        super().__init__(config, vae, mdrnn, preprocessor, environment, planning_agent)
+    def __init__(self, config, vae, mdrnn, preprocessor, planning_agent):
+        super().__init__(config, vae, mdrnn, preprocessor, planning_agent)
 
     def get_test_functions(self):
         return {  # (test_func, args)
@@ -40,8 +40,9 @@ class VizDoomPlanningTester(BasePlanningTester):
     ##
 
     def _run_trial(self, trial_i, args, seed):
-        current_state = self.environment.reset(seed)
-        seed = self.environment.environment.seed
+        environment = self._get_environment()
+        current_state = environment.reset(seed)
+        seed = environment.environment.seed
         _ = self.simulated_environment.reset()
 
         latent_state, _ = self._encode_state(current_state)
@@ -74,14 +75,15 @@ class VizDoomPlanningTester(BasePlanningTester):
             self._update_trial_results(trial_results_dto, reward)
 
         self._print_trial_results(trial_i, elapsed_time, total_reward, steps_ran, trial_results_dto)
+        environment.close()
         return elites, action_history, total_reward, trial_results_dto['max_reward'], seed
 
     def _replay_planning_test(self, args):
         actions = args[ACTION_HISTORY]
         elites = args[ELITES]
         seed = args[CUSTOM_SEED]
-
-        _ = self.environment.reset(seed=seed)
+        environment = self._get_environment()
+        _ = environment.reset(seed=seed)
         self.simulated_environment.reset()
         hidden_state = self.simulated_environment.get_hidden_zeros_state()
         trial_results_dto = self._get_trial_results_dto(args)
@@ -98,6 +100,7 @@ class VizDoomPlanningTester(BasePlanningTester):
                 self._step_sequence_in_dream(elites[i][-1][2], current_state, hidden_state)
 
         self._print_trial_results(None, None, total_reward, steps_ran, trial_results_dto)
+        environment.close()
 
         return actions, total_reward
 

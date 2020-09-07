@@ -1,6 +1,5 @@
 import os
 import pickle
-from concurrent.futures.process import ProcessPoolExecutor
 from pprint import pprint
 
 import torch
@@ -9,6 +8,7 @@ import matplotlib.pyplot as plt
 from datetime import date, datetime
 from os.path import exists, join
 from torch import multiprocessing
+from concurrent.futures.process import ProcessPoolExecutor
 from tests_custom.base_tester import BaseTester
 from utility.visualizer import Visualizer
 from utility.logging.planning_logger import PlanningLogger
@@ -23,13 +23,13 @@ CUSTOM_SEED = 'custom_seed'
 TEST_NAME = 'test_name'
 
 class BasePlanningTester(BaseTester):
-    def __init__(self, config, vae, mdrnn, preprocessor, environment, planning_agent):
-        super().__init__(config, vae, mdrnn, preprocessor, environment, trials=config["test_suite"]["trials"])
+    def __init__(self, config, vae, mdrnn, preprocessor, planning_agent):
+        super().__init__(config, vae, mdrnn, preprocessor, trials=config["test_suite"]["trials"])
         self.is_ntbea_tuning = False
         self.is_multithread_tests = self.config['test_suite']['is_multithread_tests']
         self.is_multithread_trials = self.config['test_suite']['is_multithread_trials']
         self.planning_agent = planning_agent
-        self.planning_dir = join('tests', config['test_suite']['planning_test_log_dir'])
+        self.planning_dir = join('tests_custom', config['test_suite']['planning_test_log_dir'])
         self.visualizer = Visualizer()
         self.is_render = config['visualization']['is_render']
         self.is_render_simulation = self.config['visualization']['is_render_simulation']
@@ -128,16 +128,20 @@ class BasePlanningTester(BaseTester):
         logger.log_agent_settings(test_name=args[TEST_NAME], agent=self.config['planning']['planning_agent'], settings=f'{vars(self.planning_agent)}')
 
         if self.is_multithread_trials:
-            return NotImplemented # TODO FIX
-            with ProcessPoolExecutor(max_workers=multiprocessing.cpu_count()) as executor:
-                func_input = [(trial_i, args, seed) for trial_i in range(self.trials)]
-                thread_results = list(executor.map(self._run_trial, func_input))
+            func_input = [(trial_i, args, seed) for trial_i in range(self.trials)]
+
+            with ProcessPoolExecutor(max_workers=self._get_threads()) as executor:
+                thread_results = list(executor.map(self._run_trial_thread, func_input))
+                trial_i = 0
                 for elites, action_history, total_reward, max_reward, seed, custom_message in thread_results:
                     trial_actions.append(action_history)
                     trial_rewards.append(total_reward)
                     trial_max_rewards.append(max_reward)
                     trial_elites.append(elites)
                     trial_seeds.append(seed)
+                    logger.log_trial_rewards(test_name=args[TEST_NAME], trial_idx=trial_i, total_reward=total_reward, max_reward=max_reward)
+                    logger.log_custom_trial_results(test_name=args[TEST_NAME], trial_idx=trial_i, results=custom_message)
+                    trial_i += 1
         else:
             for i in tqdm(range(self.trials), desc=f'Planning Test on {args[TEST_NAME]} with {self.trials} trials'):
                 elites, action_history, total_reward, max_reward, seed, custom_message = self._run_trial(i, args, seed)
@@ -150,6 +154,9 @@ class BasePlanningTester(BaseTester):
                 logger.log_custom_trial_results(test_name=args[TEST_NAME], trial_idx=i, results=custom_message)
 
         return trial_actions, trial_rewards, trial_elites, trial_max_rewards, trial_seeds
+
+    def _run_trial_thread(self, args):
+        return self._run_trial(args[0], args[1], args[2])
 
     def _run_cached_session(self):
         print('--- RUNNING CACHED PLANNING TESTS ---')
@@ -179,8 +186,8 @@ class BasePlanningTester(BaseTester):
 
         return action, step_elites
 
-    def _step(self, action, hidden_state):
-        current_state, reward, is_done, _ = self.environment.step(action)
+    def _step(self, action, hidden_state, environment):
+        current_state, reward, is_done, _ = environment.step(action)
         latent_state, _ = self._encode_state(current_state)
         latent_state, simulated_reward, simulated_is_done, hidden_state = self.simulated_environment.step(action,
                                                                                                           hidden_state,
@@ -190,7 +197,7 @@ class BasePlanningTester(BaseTester):
             self.simulated_environment.render()
 
         if self.is_render:
-            self.environment.render()
+            environment.render()
 
         return current_state, reward, is_done, simulated_reward, simulated_is_done, latent_state, hidden_state
 
@@ -265,3 +272,7 @@ class BasePlanningTester(BaseTester):
         agent_name = self.config['planning']['planning_agent']
         date = datetime.now().strftime("%Y_%m_%d_%H_%M")
         return f'{custom_name if custom_name else f"{config_name}_{date}_{agent_name}"}'
+
+    def _get_threads(self):
+        fixed_cores = self.config['test_suite']['fixed_cores']
+        return fixed_cores if fixed_cores is not None and fixed_cores <= multiprocessing.cpu_count() else multiprocessing.cpu_count()

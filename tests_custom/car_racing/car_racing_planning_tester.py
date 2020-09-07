@@ -12,9 +12,8 @@ TILES_TO_COMPLETE = 'tiles_to_complete'
 START_TRACK = 'start_track'
 
 class PlanningTester(BasePlanningTester):
-    def __init__(self, config, vae, mdrnn, preprocessor, environment, planning_agent):
-        super().__init__(config, vae, mdrnn, preprocessor, environment, planning_agent)
-        self.environment.is_random_inital_car_position = False
+    def __init__(self, config, vae, mdrnn, preprocessor, planning_agent):
+        super().__init__(config, vae, mdrnn, preprocessor, planning_agent)
         self.is_render_best_elite_only = self.config['visualization']['is_render_best_elite_only']
         self.is_render_fitness = self.config['visualization']['is_render_fitness']
         self.is_render_trajectory = self.config['visualization']['is_render_trajectory']
@@ -71,11 +70,13 @@ class PlanningTester(BasePlanningTester):
     # ######################################################
 
     def _run_trial(self, trial_i, args, seed):
-        current_state = self.environment.reset(seed)
-        seed = self.environment.seed
+        environment = self._get_environment()
+        environment.is_random_inital_car_position = False
+        current_state = environment.reset(seed)
+        seed = environment.seed
 
         if args[CUSTOM_SEED] is not None:
-            self._set_car_position(args[START_TRACK])
+            self._set_car_position(args[START_TRACK], environment)
 
         self.simulated_environment.reset()
         latent_state, _ = self._encode_state(current_state)
@@ -99,7 +100,7 @@ class PlanningTester(BasePlanningTester):
             action, step_elites = self._search_action(latent_state, hidden_state)
             elites.append(step_elites)
 
-            self._render_fitness_and_trajory(current_state, step_elites)
+            self._render_fitness_and_trajory(current_state, step_elites, environment)
 
             if self.config['planning']['planning_agent'] != "RANDOM":
                 self._simulate_dream(self.planning_agent.current_elite.action_sequence, current_state, hidden_state)
@@ -108,7 +109,7 @@ class PlanningTester(BasePlanningTester):
                 break
 
             current_state, reward, is_done, simulated_reward, simulated_is_done, latent_state, hidden_state = \
-                self._step(action, hidden_state)
+                self._step(action, hidden_state, environment)
 
             negative_counter = 0 if reward > 0 else negative_counter + 1
             action_history.append(action)
@@ -122,17 +123,18 @@ class PlanningTester(BasePlanningTester):
 
         progress_bar.close()
         custom_message = self._print_trial_results(trial_i, elapsed_time, total_reward, steps_ran, trial_results_dto)
+        environment.close()
         return elites, action_history, total_reward, trial_results_dto['max_reward'], seed, custom_message
 
     def _replay_planning_test(self, args):
         actions = args[ACTION_HISTORY]
         elites = args[ELITES]
         seed = args[CUSTOM_SEED]
-
-        _ = self.environment.reset(seed=seed)
+        environment = self._get_environment()
+        _ = environment.reset(seed=seed)
         self.simulated_environment.reset()
         hidden_state = self.simulated_environment.get_hidden_zeros_state()
-        self._set_car_position(args[START_TRACK])
+        self._set_car_position(args[START_TRACK], environment)
 
         trial_results_dto = self._get_trial_results_dto(args)
 
@@ -148,18 +150,18 @@ class PlanningTester(BasePlanningTester):
             if elites:
                 self._render_fitness_and_trajory(step_elites=elites[i], current_state=current_state)
                 self._simulate_dream(elites[i][-1][2], current_state, hidden_state)
-
+        environment.close()
         self._print_trial_results(None, None, total_reward, steps_ran, trial_results_dto)
 
         return actions, total_reward
 
-    def _render_fitness_and_trajory(self, current_state, step_elites):
+    def _render_fitness_and_trajory(self, current_state, step_elites, environment):
         if self.is_render_fitness:
             self.visualizer.show_fitness_plot(max_generation=len(step_elites)-1, elites=step_elites, agent=self.config['planning']['planning_agent'])
 
         if self.is_render_trajectory:
             self.visualizer.show_trajectory_plot(current_state, step_elites, self.config['planning']['planning_agent'],
-                                                 self.environment.environment, self.is_render_best_elite_only)
+                                                 environment.environment, self.is_render_best_elite_only)
 
     def _simulate_dream(self, action_sequence, current_state, hidden_state):
         action_sequence = [self._get_action(action) for action in action_sequence]
@@ -169,9 +171,9 @@ class PlanningTester(BasePlanningTester):
     def _get_action(self, action):
         return action[0] if type(action) == tuple and len(action) == 2 else action
 
-    def _set_car_position(self, start_track):
-        self.environment.environment.env.car = Car(self.environment.environment.env.world,
-                                                   *self.environment.environment.env.track[start_track][1:4])
+    def _set_car_position(self, start_track, environment):
+        environment.environment.env.car = Car(environment.environment.env.world,
+                                                   *environment.environment.env.track[start_track][1:4])
 
     def _reward_diff_percentage(self, actual, control):
         return round((actual-control) / 100) if abs(actual) == 0 else round((actual-control) / abs(actual) * 100)

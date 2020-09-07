@@ -64,17 +64,17 @@ class Main:
 
     def run_ntbea_tuning(self, vae, mdrnn):
         agent = get_planning_agent(self.config)
-        planning_tester = get_planning_tester(self.config, vae, mdrnn, self.frame_preprocessor, self.environment, agent)
+        planning_tester = get_planning_tester(self.config, vae, mdrnn, self.frame_preprocessor, agent)
         ntbea_tuner = PlanningNTBEAWrapper(self.config, planning_tester)
         ntbea_tuner.run_ntbea()
 
     def run_model_tests(self, vae, mdrnn):
-        model_tester = get_model_tester(self.config, vae, mdrnn, self.frame_preprocessor, self.environment)
+        model_tester = get_model_tester(self.config, vae, mdrnn, self.frame_preprocessor)
         model_tester.run_tests()
 
     def run_planning_tests(self, vae, mdrnn):
         agent = get_planning_agent(self.config)
-        planning_tester = get_planning_tester(self.config, vae, mdrnn, self.frame_preprocessor, self.environment, agent)
+        planning_tester = get_planning_tester(self.config, vae, mdrnn, self.frame_preprocessor, agent)
         planning_tester.run_tests()
 
     def play_game(self, vae, mdrnn):
