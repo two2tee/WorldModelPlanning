@@ -64,7 +64,7 @@ class PlanningEvaluator(Evaluator):
         if run_all:
             reward = self.test_suite.run_tests()
         else:
-            _, _, trial_rewards, _, _ = self.test_suite.run_specific_test(test_name='planning_whole_random_track') # TODO generalize
+            _, _, trial_rewards, _, _ = self.test_suite.run_specific_test(test_name='planning_whole_random_track')  # TODO generalize
             reward = trial_rewards[0]
 
         return reward

@@ -13,13 +13,11 @@ from utility.preprocessor import Preprocessor
 from mdrnn.iterative_trainer import IterativeTrainer
 from tuning.ntbea_wrapper import PlanningNTBEAWrapper
 from utility.rollout_handling.rollout_generator_factory import get_rollout_generator
-from tests.test_suite_factory import get_model_tester, get_planning_tester
+from tests_custom.test_suite_factory import get_model_tester, get_planning_tester
 from environment.environment_factory import get_environment
 from mdrnn.mdrnn_trainer import MDRNNTrainer as MDRNNTrainer
-from planning.simulation.mcts_simulation import MCTS as MCTS_simulation
-from planning.simulation.rolling_horizon_simulation import RHEA as RHEA_simulation
 from planning.simulation.simulated_planning_controller import SimulatedPlanningController
-from planning.simulation.random_mutation_hill_climbing_simulation import RMHC as RMHC_simulation
+from planning.agent_factory import get_planning_agent
 colorama_init()
 
 
@@ -58,14 +56,14 @@ class Main:
         return trained_mdrnn
 
     def _iterative_mdrnn_training(self, mdrnn):
-        planning_agent = self.get_planning_agent(config['planning']['planning_agent'])
+        planning_agent = get_planning_agent(self.config)
         iterative_trainer = IterativeTrainer(config, planning_agent, main.mdrnn_trainer)
         iterative_trainer.train()
         self.mdrnn_trainer.reload_model(mdrnn)
         return
 
     def run_ntbea_tuning(self, vae, mdrnn):
-        agent = self.get_planning_agent(self.config['planning']['planning_agent'])
+        agent = get_planning_agent(self.config)
         planning_tester = get_planning_tester(self.config, vae, mdrnn, self.frame_preprocessor, self.environment, agent)
         ntbea_tuner = PlanningNTBEAWrapper(self.config, planning_tester)
         ntbea_tuner.run_ntbea()
@@ -75,20 +73,13 @@ class Main:
         model_tester.run_tests()
 
     def run_planning_tests(self, vae, mdrnn):
-        agent = self.get_planning_agent(config['planning']['planning_agent'])
+        agent = get_planning_agent(self.config)
         planning_tester = get_planning_tester(self.config, vae, mdrnn, self.frame_preprocessor, self.environment, agent)
         planning_tester.run_tests()
 
-    def get_planning_agent(self, planning_agent):
-        simulated_agents = {"RHEA": RHEA_simulation(*config['planning']['rolling_horizon'].values()),
-                            "RMHC": RMHC_simulation(*config['planning']['random_mutation_hill_climb'].values()),
-                            "MCTS": MCTS_simulation(*config['planning']['monte_carlo_tree_search'].values())}
-
-        return simulated_agents[planning_agent]
-
     def play_game(self, vae, mdrnn):
         print('---- START PLAYING ----')
-        agent = self.get_planning_agent(config['planning']['planning_agent'])
+        agent = get_planning_agent(self.config)
         game_controller = SimulatedPlanningController(config, main.frame_preprocessor, vae, mdrnn)
         num_games, average_steps, average_reward = 10, 0, 0
         for i in range(num_games):

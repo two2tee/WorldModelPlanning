@@ -10,6 +10,8 @@
 #  Written by Thor V.A.N. Olesen <thorolesen@gmail.com> & Dennis T.T. Nguyen <dennisnguyen3000@yahoo.dk>.
 
 import os
+import sys
+
 import gym
 import time
 import pickle
@@ -26,7 +28,7 @@ from mdrnn.mdrnn import MDRNN
 from os.path import join, exists
 from vae.vae_trainer import VaeTrainer
 from utility.preprocessor import Preprocessor
-from tests.test_suite_factory import get_planning_tester
+from tests_custom.test_suite_factory import get_planning_tester
 from planning.simulation.agent_wrapper import AgentWrapper
 from environment.environment_factory import get_environment
 from utility.logging.planning_logger import PlanningLogger
