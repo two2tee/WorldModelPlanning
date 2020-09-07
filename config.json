@@ -1,6 +1,6 @@
 {
     "game": "CarRacing-v0",
-    "experiment_name": "World_Model_RandomNormal",
+    "experiment_name": "World_Model_A",
     "forced_vae": "World_Model_Random",
     "latent_size": 64,
     "num_reconstructions": 64,
@@ -168,11 +168,11 @@
         "max_epochs": 10,
         "test_scenario": "planning_whole_random_track",
         "is_random_policy_not_planning": false,
-        "fixed_cpu_cores": null,
+        "fixed_cpu_cores": 2,
         "max_test_threads": 3,
         "replay_buffer": {
-            "is_replay_buffer": false,
-            "max_buffer_size": 10000
+            "is_replay_buffer": true,
+            "max_buffer_size": 20000
         }
     },
     "real_environment": {

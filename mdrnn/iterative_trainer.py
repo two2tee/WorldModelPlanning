@@ -32,7 +32,7 @@ from tests_custom.test_suite_factory import get_planning_tester
 from planning.simulation.agent_wrapper import AgentWrapper
 from environment.environment_factory import get_environment
 from utility.logging.planning_logger import PlanningLogger
-from torch.multiprocessing import Pool, Process, Manager, RLock, Lock
+from torch.multiprocessing import Pool, Process, Manager, RLock, Lock, Value
 from mdrnn.iteration_stats.iteration_result import IterationResult
 from environment.actions.action_sampler_factory import get_action_sampler
 gym.logger.set_level(40)  # Disable user warnings
@@ -61,10 +61,7 @@ class IterativeTrainer:
         self.max_test_threads = config["iterative_trainer"]["max_test_threads"]
         self.is_replay_buffer = config["iterative_trainer"]["replay_buffer"]['is_replay_buffer']
         self.max_buffer_size = config["iterative_trainer"]["replay_buffer"]['max_buffer_size']
-        self.replay_buffer_count = self._get_replay_buffer_size()
-        self.test_lock = Lock()
-        self.replay_count_lock = Lock()
-
+        self._rollout_counter = self._get_rollout_file_count()
         if not exists(self.iteration_stats_dir):
             os.mkdir(self.iteration_stats_dir)
 
@@ -100,28 +97,45 @@ class IterativeTrainer:
         self.threads = self.num_rollouts if self.num_rollouts < self.threads else self.threads
         self._set_torch_threads(threads=1)  # 1 to ensure underlying threads only uses 1 thread to prevent hidden threading
         num_rollouts_per_thread = int(self.num_rollouts / self.threads)
-
         print(f'{self.num_rollouts} rollouts across {self.threads} cores with {num_rollouts_per_thread} rollouts each.')
-        with Pool(int(self.threads), initargs=(RLock(),), initializer=tqdm.set_lock) as pool:
+
+        shared_rollout_counter = Value('i', self._rollout_counter,)
+        with Pool(int(self.threads), initargs=(Lock(), RLock(), shared_rollout_counter,), initializer=self.init_globals) as pool:
             threads = [pool.apply_async(self._get_rollout_batch, args=(num_rollouts_per_thread, thread_id, iteration, vae, mdrnn))
                        for thread_id in range(1, self.threads + 1)]
+            pool.close()
             [thread.get() for thread in threads]
             pool.close()
+        self._rollout_counter = shared_rollout_counter.value
 
         print(f'Done - {self.num_rollouts} rollouts saved in {self.data_dir}')
 
-    def _set_replay_buffer_count(self):
-        self.replay_buffer_count = 1 if self.replay_buffer_count > self.max_buffer_size else self.replay_buffer_count + 1
+    def init_globals(self, _rollout_lock, tqdm_lock, _rollout_counter):
+        global rollout_lock
+        global rollout_counter
+        rollout_lock = _rollout_lock
+        rollout_counter = _rollout_counter
+        tqdm.set_lock(tqdm_lock)
 
-    def _get_replay_buffer_size(self):
+    def _set_rollout_count(self):
+        if self.is_replay_buffer:
+            rollout_counter.value = 1 if rollout_counter.value > self.max_buffer_size else rollout_counter.value + 1
+        else:
+            rollout_counter.value = rollout_counter.value + 1
+
+
+    def _get_rollout_file_count(self):
         return len([name for root, dirs, files in os.walk(self.data_dir) for name in files])
 
-    def _get_rollout_batch(self, num_rollouts_per_thread, thread_id, iteration, vae, mdrnn):  # SLOW
+    def _get_rollout_batch(self, num_rollouts_per_thread, thread_id, iteration, vae, mdrnn):
         environment = get_environment(self.config)
         agent_wrapper = AgentWrapper(self.planning_agent, self.config, vae, mdrnn)
         for rollout_number in range(1, num_rollouts_per_thread + 1):
             actions, states, rewards, terminals = self._create_rollout(agent_wrapper, environment, thread_id, rollout_number, num_rollouts_per_thread, iteration)
-            self._save_rollout(thread_id, rollout_number, actions, states, rewards, terminals)
+
+            with rollout_lock:
+                self._set_rollout_count()
+                self._save_rollout(actions, states, rewards, terminals)
 
         environment.close()
 
@@ -201,18 +215,13 @@ class IterativeTrainer:
             terminals.append(done)
         return actions, states, rewards, terminals
 
-    def _save_rollout(self, thread_id, rollout_number, actions, states, rewards, terminals):
-        self.replay_count_lock.acquire()
-        file_name = f'iterative_thread_{thread_id}_rollout_{rollout_number}{f"_{self.replay_buffer_count}" if self.replay_buffer_count else ""}'
+    def _save_rollout(self, actions, states, rewards, terminals):
+        file_name = f'iterative_rollout_{rollout_counter.value}'
         np.savez_compressed(file=join(self.data_dir, file_name),
                             observations=np.array(states),
                             rewards=np.array(rewards),
                             actions=np.array(actions),
                             terminals=np.array(terminals))
-        if self.is_replay_buffer:
-            self._set_replay_buffer_count()
-        self.replay_count_lock.release()
-
 
     def _reset(self, environment, agent_wrapper):
         agent_wrapper.reset()
@@ -220,19 +229,15 @@ class IterativeTrainer:
         return obs, environment
 
     def _log_iteration_test_results(self, iteration_result):
-        self.test_lock.acquire()
-        try:
-            logger = PlanningLogger(is_logging=True)
-            logger.start_log(name=f'{self._make_session_name(self.config["experiment_name"], iteration_result.agent_name, iteration_result.iteration)}')
+        logger = PlanningLogger(is_logging=True)
+        logger.start_log(name=f'{self._make_session_name(self.config["experiment_name"], iteration_result.agent_name, iteration_result.iteration)}')
 
-            logger.log_iteration_max_reward(test_name=iteration_result.test_name, trials=iteration_result.iteration_result.total_trials,
-                                                 iteration=iteration_result.iteration, max_reward=iteration_result.get_average_max_reward())
-            logger.log_iteration_avg_reward(test_name=iteration_result.test_name, trials=iteration_result.iteration_result.total_trials,
-                                            iteration=iteration_result.iteration, avg_reward=iteration_result.get_average_total_reward())
-            logger.end_log()
+        logger.log_iteration_max_reward(test_name=iteration_result.test_name, trials=iteration_result.iteration_result.total_trials,
+                                             iteration=iteration_result.iteration, max_reward=iteration_result.get_average_max_reward())
+        logger.log_iteration_avg_reward(test_name=iteration_result.test_name, trials=iteration_result.iteration_result.total_trials,
+                                        iteration=iteration_result.iteration, avg_reward=iteration_result.get_average_total_reward())
+        logger.end_log()
 
-        finally:
-            self.test_lock.release()  # release lock, no matter what
 
     def _save_iteration_stats(self, iteration_results):
         stats_filename = f'iterative_stats_{self.config["experiment_name"]}'
@@ -270,3 +275,4 @@ class IterativeTrainer:
 
     def _make_session_name(self, model_name, agent_name,  iteration):
         return f'{model_name}_{agent_name}_iteration_{iteration}'
+
