@@ -10,7 +10,7 @@ import torch
 import re
 
 from mdrnn.iteration_stats.iteration_result import IterationResult
-from tests.test_suite_factory import get_planning_tester
+from tests_custom.test_suite_factory import get_planning_tester
 from environment.environment_factory import get_environment
 from os.path import exists, join
 from vae.vae import VAE

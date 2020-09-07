@@ -131,7 +131,7 @@ class MDRNNTrainer:
         start_epoch += 1
         max_epochs = self.config['mdrnn_trainer']['max_epochs'] if max_epochs is None else max_epochs
 
-        if self.is_baseline_reward_loss:
+        if self.is_baseline_reward_loss and not self.is_iterative:
             avg_baseline_reward = self._calc_reward_avg_baseline()
             self.baseline_train_loss,  self.baseline_test_loss = self._calc_baseline_losses(avg_baseline_reward)
 

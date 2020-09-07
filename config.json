@@ -6,7 +6,7 @@
     "num_reconstructions": 64,
     "is_generate_data": false,
     "is_train_vae": false,
-    "is_train_mdrnn": true,
+    "is_train_mdrnn": false,
     "is_iterative_train_mdrnn": false,
     "is_ntbea_param_tune": false,
     "is_play": false,
@@ -17,28 +17,8 @@
     "data_dir": "data",
     "test_data_dir": "data_test",
     "is_use_specific_test_data": false  ,
-    "ntbea_tuning":{
-        "is_reload_session": false,
-        "session_name": "ntbea_session_World_Model_M_RHEA",
-        "iterations": 100,
-        "mutation_point_probability": 0.5,
-        "explore_rate": 2.0,
-        "ucb_random_noise": 0.5,
-        "eval_neighbours": 50,
-        "samples_per_eval": 1,
-        "shift_buffer_options": [true, false],
-        "horizon_options": [5, 10, 15, 20],
-        "generation_options": [1, 5, 10, 15, 20],
-        "is_rollout_options": [false],
-        "max_rollout_options": [1],
-        "mutation_options":["single_uniform", "all_uniform", "subset_mutation"],
-        "RHEA_population_size": [2, 4, 8, 16],
-        "RHEA_genetic_operator_options": ["crossover","mutation","crossover_mutation"],
-        "RHEA_selection_options": ["uniform","tournament","rank","roulette"],
-        "RHEA_crossover_methods_options": ["uniform","1_bit","2_bit"]
-    },
     "visualization": {
-        "is_render": true,
+        "is_render": false,
         "is_render_trajectory": false,
         "is_render_best_elite_only": false,
         "is_render_fitness": false,
@@ -48,11 +28,12 @@
     },
     "test_suite": {
         "is_run_model_tests": false,
-        "is_run_planning_tests":  false,
+        "is_run_planning_tests":  true,
         "is_reload_planning_session": false,
         "trials": 30,
         "is_multithread_tests": false,
-        "is_multithread_trials": false,
+        "is_multithread_trials": true,
+        "fixed_cores": null,
         "planning_test_log_dir": "planning_test_results",
         "planning_session_to_load": "RHEA_World_Model_L_planning_session_2020-05-20-00.00_total_session_best_reward_804.0589_BEST",
         "is_logging": true,
@@ -190,8 +171,8 @@
         "fixed_cpu_cores": null,
         "max_test_threads": 3,
         "replay_buffer": {
-            "is_replay_buffer": false,
-            "max_buffer_size": 10000
+            "is_replay_buffer": true,
+            "max_buffer_size": 20000
         }
     },
     "real_environment": {
@@ -217,6 +198,25 @@
         "mutation_probability": 0.2,
         "tournament_percentage": 0.5,
         "seed": "None"
+    },
+    "ntbea_tuning":{
+        "is_reload_session": false,
+        "session_name": "ntbea_session_World_Model_M_RHEA",
+        "iterations": 100,
+        "mutation_point_probability": 0.5,
+        "explore_rate": 2.0,
+        "ucb_random_noise": 0.5,
+        "eval_neighbours": 50,
+        "shift_buffer_options": [true, false],
+        "horizon_options": [5, 10, 15, 20, 25],
+        "generation_options": [1, 5, 10, 15, 20, 25],
+        "is_rollout_options": [false],
+        "max_rollout_options": [1],
+        "mutation_options":["single_uniform", "all_uniform", "subset_mutation"],
+        "RHEA_population_size": [4, 6, 8, 10, 12],
+        "RHEA_genetic_operator_options": ["crossover","mutation","crossover_mutation"],
+        "RHEA_selection_options": ["uniform","tournament","rank","roulette"],
+        "RHEA_crossover_methods_options": ["uniform","1_bit","2_bit"]
     },
     "planning": {
         "planning_agent": "RMHC",

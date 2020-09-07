@@ -6,6 +6,7 @@
 
 import numpy as np
 from abc import ABC
+from utility.logging.ntbea_logger import NTBEALogger
 from tuning.ntbea.common import DefaultMutator
 from tuning.ntbea.ntbea import SearchSpace, Evaluator, NTupleLandscape, NTupleEvolutionaryAlgorithm
 
@@ -57,17 +58,16 @@ class PlanningEvaluator(Evaluator):
 
     def evaluate(self, point):
         self._set_agent_params(point)
-        self.test_suite.trials = 1
         self.test_suite.is_ntbea_tuning = True
+        self.test_suite.is_logging = False
 
         run_all = True
         if run_all:
-            reward = self.test_suite.run_tests()
+            rewards = self.test_suite.run_tests()
         else:
-            _, _, trial_rewards, _, _ = self.test_suite.run_specific_test(test_name='planning_whole_random_track') # TODO generalize
-            reward = trial_rewards[0]
+            _, _, rewards, _, _ = self.test_suite.run_specific_test(test_name='planning_whole_random_track')  # TODO generalize
 
-        return reward
+        return np.mean(rewards)
 
     def _set_agent_params(self, point):
         evolution_handler = self.test_suite.planning_agent.evolution_handler
@@ -100,10 +100,11 @@ class PlanningNTBEAWrapper:
         self.ucb_random_noise = self.config['ntbea_tuning']['ucb_random_noise']
         self.explore_rate = self.config['ntbea_tuning']['explore_rate']
         self.eval_neighbours = self.config['ntbea_tuning']['eval_neighbours']
-        self.samples_per_eval = self.config['ntbea_tuning']['samples_per_eval']
         self.iterations = self.config['ntbea_tuning']['iterations']
         self.agent_type = self.config['planning']['planning_agent']
         self.world_model = self.config['experiment_name']
+        self._logger = NTBEALogger(is_logging=True)
+
 
     def run_ntbea(self):
         print(f'Running NTBEA for planning agent: {self.agent_type} with world model: {self.world_model}'
@@ -122,14 +123,15 @@ class PlanningNTBEAWrapper:
         mutator = DefaultMutator(search_space, mutation_point_probability=self.mutation_point_probability)
 
         # NTBEA Algorithm
-        evolutionary_algorithm = NTupleEvolutionaryAlgorithm(tuple_landscape, planning_evaluator, search_space, mutator,
-                                                             self.explore_rate, self.samples_per_eval,self.eval_neighbours,
+        evolutionary_algorithm = NTupleEvolutionaryAlgorithm(tuple_landscape, planning_evaluator, search_space, mutator, self.explore_rate,
+                                                             eval_neighbours=self.eval_neighbours,
                                                              world_model=self.world_model, agent_type=self.agent_type,
                                                              config=self.config)
 
         best_params_config, fitness = evolutionary_algorithm.run(self.iterations)
-
-        self.print_results(best_params_config, fitness)
+        results = self._get_best_results(best_params_config, fitness)
+        self._print_results(results)
+        self._log_results(results)
 
     def _get_parameters(self, agent_type):
         shift_buffer_options = self.config['ntbea_tuning']['shift_buffer_options']
@@ -155,21 +157,28 @@ class PlanningNTBEAWrapper:
         print(f'search space: {search_space}')
         return search_space
 
-    def print_results(self, best_params_config, fitness):
+    def _print_results(self, results):
         print(f'COMPLETED NTBEA for planning agent: {self.agent_type} with world model: {self.world_model}')
-        stats = f'-- Best Configuration --' \
-                f'\nFitness: {fitness}' \
-                f'\nShift buffer: {"True" if best_params_config[0]== 1 else "False"}' \
-                f'\nHorizon: {best_params_config[1]}' \
-                f'\nGenerations: {best_params_config[2]}'\
-                f'\nIs rollout: {best_params_config[3]}' \
-                f'\nMax rollouts : {best_params_config[4]}' \
-                f'\nMutation Method: {best_params_config[5]}'
+        print(results)
+
+    def _get_best_results(self, best_params_config, fitness):
+        stats = f'Iterations: {self.iterations} ' \
+                f'\nBest Fitness: {fitness} ' \
+                f'\nShift buffer: {"True" if best_params_config[0]== 1 else "False"} ' \
+                f'\nHorizon: {best_params_config[1]} ' \
+                f'\nGenerations: {best_params_config[2]} '\
+                f'\nMutation Method: {best_params_config[5]} '
+                # f'\nIs rollout: {best_params_config[3]} ' \
+                # f'\nMax rollouts : {best_params_config[4]} ' \
 
         stats = stats+f'\nPopulation: {best_params_config[6]}' \
                       f'\nGenetic Operator: {best_params_config[7]}' \
                       f'\nSelection Method: {best_params_config[8]}' \
                       f'\nCrossover Method: {best_params_config[9]}' \
                       if self.agent_type == "RHEA" else stats
-        print(stats)
+        return stats
+
+    def _log_results(self, results):
+        self._logger.start_log(self.world_model)
+        self._logger.log_ntbea_results(self.agent_type, results)
 
