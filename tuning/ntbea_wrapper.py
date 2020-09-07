@@ -162,13 +162,14 @@ class PlanningNTBEAWrapper:
         print(results)
 
     def _get_best_results(self, best_params_config, fitness):
-        stats = f'Best Fitness: {fitness}' \
+        stats = f'Iterations: {self.iterations} ' \
+                f'Best Fitness: {fitness}' \
                 f'\nShift buffer: {"True" if best_params_config[0]== 1 else "False"}' \
                 f'\nHorizon: {best_params_config[1]}' \
                 f'\nGenerations: {best_params_config[2]}'\
-                f'\nIs rollout: {best_params_config[3]}' \
-                f'\nMax rollouts : {best_params_config[4]}' \
                 f'\nMutation Method: {best_params_config[5]}'
+                # f'\nIs rollout: {best_params_config[3]}' \
+                # f'\nMax rollouts : {best_params_config[4]}' \
 
         stats = stats+f'\nPopulation: {best_params_config[6]}' \
                       f'\nGenetic Operator: {best_params_config[7]}' \
