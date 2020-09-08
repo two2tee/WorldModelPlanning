@@ -25,10 +25,11 @@ class PlanningTester(BasePlanningTester):
                 # "left_turn_planning_test": (self._planning_left_turn_test, {OPTIMAL_REWARD: 23, OPTIMAL_STEPS: 60, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 10, CUSTOM_SEED: 9214}),
                 # "right_turn_planning_test": (self._planning_right_turn_test,{OPTIMAL_REWARD: 33, OPTIMAL_STEPS: 60, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 11, CUSTOM_SEED: 2}),
                 # "s_turn_planning_test": (self._planning_s_turn_test, {OPTIMAL_REWARD: 43, OPTIMAL_STEPS: 80, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 16, CUSTOM_SEED: 9214}),
-                # "u_turn_planning_test": (self._planning_u_turn_test,{OPTIMAL_REWARD: 40, OPTIMAL_STEPS: 80, RANDOM_REWARD: -5, TILES_TO_COMPLETE: 15, CUSTOM_SEED: 9214}),
+                "u_turn_planning_test": (self._planning_u_turn_test,{OPTIMAL_REWARD: 40, OPTIMAL_STEPS: 80, RANDOM_REWARD: -5, TILES_TO_COMPLETE: 15, CUSTOM_SEED: 9214}),
                 # "planning_whole_track_no_right_turns_test": (self._planning_whole_track_no_right_turns_test, {OPTIMAL_REWARD: 900, OPTIMAL_STEPS: 1200, RANDOM_REWARD: -32, TILES_TO_COMPLETE: 1200, CUSTOM_SEED: 30}),
-                # "planning_whole_random_track": (self._planning_whole_random_track_test, {OPTIMAL_REWARD: 900, OPTIMAL_STEPS: 1200, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 1200, CUSTOM_SEED: None})
-                "planning_whole_random_track": (self._planning_whole_random_track_test, {OPTIMAL_REWARD: 900, OPTIMAL_STEPS: 100, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 1200, CUSTOM_SEED: None})
+                "planning_whole_random_track": (self._planning_whole_random_track_test, {OPTIMAL_REWARD: 900, OPTIMAL_STEPS: 1200, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 1200, CUSTOM_SEED: None})
+                # "planning_specific_track": (self._planning_whole_random_track_test, {OPTIMAL_REWARD: 900, OPTIMAL_STEPS: 1200, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 1200, CUSTOM_SEED: 1368641685})
+
         }
 
     # TEST METHODS #######################################
@@ -65,6 +66,11 @@ class PlanningTester(BasePlanningTester):
 
     def _planning_whole_random_track_test(self, args):
         args[TEST_NAME] = 'Whole random track planning test'
+        args[START_TRACK] = 1
+        return self._run_plan_or_replay(args=args)
+
+    def _planning_specific_track_test(self, args):
+        args[TEST_NAME] = f'planning_specific_track - seed: {args[CUSTOM_SEED]}'
         args[START_TRACK] = 1
         return self._run_plan_or_replay(args=args)
 

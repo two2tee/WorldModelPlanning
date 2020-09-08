@@ -42,47 +42,42 @@ class ModelTester(BaseTester):
 
     def _forward_drive_slow_test(self):
         print(f'\n----- Forward drive slow test ------')
-        actions = [([0, 0.01, 0], 80)]
+        actions = [([0, 0.01, 0], 20) for _ in range(4)]
         self._execute_trial(actions, start_track=25)
 
     def _forward_drive_medium_test(self):
         print(f'\n----- Forward drive medium test ------')
-        actions = [([0, 0.1, 0], 60), ([0, 0.1, 0], 20)]
+        actions = [([0, 0.1, 0], 20) for _ in range(4)]
         self._execute_trial(actions, start_track=25)
 
     def _forward_drive_fast_test(self):
         print(f'\n----- Forward drive fast test ------')
-        actions = [([0, 0.1, 0], 60), ([0, 1, 0], 20)]
-        self._execute_trial(actions, start_track=25)
-
-    def _forward_oscilation(self):
-        print(f'\n----- Forward drive fast oscilation test ------')
-        actions = [([0, 0.1, 0], 10), ([0, 1, 0], 20)]
+        actions = [([0, 0.5, 0], 20) for _ in range(4)]
         self._execute_trial(actions, start_track=25)
 
     def _drive_to_grass_test(self):
         print(f'\n----- Drive to grass test ------')
-        actions = [([1, 0.5, 0], 30), ([0, 0.3, 0], 50)]  # actions: steer right, drive and break
+        actions = [([1, 0.5, 0], 20), ([0, 0.1, 0], 20), ([0, 0.1, 0], 20), ([0, 0.1, 0], 20)]  # actions: steer right, drive and break
         self._execute_trial(actions, start_track=25)
 
     def _drive_left_turn_test(self):
         print(f'\n----- Drive left turn test ------')
-        actions = [([0, 0.5, 0], 20), ([-0.3, 0.5, 0], 20), ([-0.2, 0.5, 0], 10), ([0, 0.1, 0], 30)]
+        actions = [([0, 0.5, 0], 20), ([-0.3, 0.5, 0], 20), ([-0.2, 0.5, 0], 20), ([0, 0.1, 0], 20)]
         self._execute_trial(actions, start_track=14)
 
     def _drive_pass_left_turn_test(self):
         print(f'\n----- Drive pass left turn test ------')
-        actions = [([0, 0.3, 0], 80)]
+        actions = [([0, 0.2, 0], 20) for _ in range(4)]
         self._execute_trial(actions, start_track=14)
 
     def _drive_right_turn_test(self):
         print(f'\n----- Drive right turn test ------')
-        actions = [([0, 0.5, 0], 20), ([0.3, 0.5, 0], 20), ([0.2, 0.5, 0], 10), ([0, 0.1, 0], 30)]
+        actions = [([0, 0.5, 0], 20), ([0.3, 0.5, 0], 20), ([0.2, 0.5, 0], 20), ([0, 0.1, 0], 20)]
         self._execute_trial(actions, start_track=70)
 
     def _drive_pass_right_turn_test(self):
         print(f'\n----- Drive pass right turn test ------')
-        actions = [([0, 0.3, 0], 80)]
+        actions = [([0, 0.2, 0], 20) for _ in range(4)]
         self._execute_trial(actions, start_track=70)
 
     def _drive_u_turn_test(self):
@@ -93,7 +88,7 @@ class ModelTester(BaseTester):
 
     def _drive_pass_u_turn_test(self):
         print(f'\n----- Drive pass u turn test ------')
-        actions = [([0, 0.3, 0], 80)]
+        actions = [([0, 0.3, 0], 20) for _ in range(4)]
         self._execute_trial(actions, start_track=103)
 
     def _drive_s_turn_test(self):
@@ -103,23 +98,24 @@ class ModelTester(BaseTester):
 
     def _drive_pass_s_turn_test(self):
         print(f'\n----- Drive pass s turn test ------')
-        actions = [([0, 0.3, 0], 80)]
+        actions = [([0, 0.5, 0], 20) for _ in range(4)]
         self._execute_trial(actions, start_track=250)
 
     def _execute_trial(self, actions, start_track=0):
-        environment = self._get_environment()
-        environment.is_random_inital_car_position = False
+
         self._print_total_steps(actions)
         print(f"Action sequence [(action, repetition),...]: {actions}")
         for _ in range(self.trials):
+            environment = self._get_environment()
+            environment.is_random_inital_car_position = False
             init_state = environment.reset(seed=self.seed)
             self.simulated_environment.reset()
-            self._set_car_pos(start_track)
-            total_reward_real, total_partial_reward_sim, avg_recon_diff, total_full_sim_reward = self._step(actions, init_state)
+            self._set_car_pos(start_track, environment)
+            total_reward_real, total_partial_reward_sim, avg_recon_diff, total_full_sim_reward = self._step(actions, init_state, environment)
             self._print_results(total_reward_real, total_full_sim_reward, total_partial_reward_sim, avg_recon_diff)
-        environment.close()
+            environment.close()
 
-    def _step(self, actions, current_state):
+    def _step(self, actions, current_state, environment):
         hidden_state = self.simulated_environment.get_hidden_zeros_state()
         total_reward_real = 0
         total_reward_sim = 0
@@ -129,13 +125,13 @@ class ModelTester(BaseTester):
         for (action, repetition) in actions:
             total_full_sim_reward += self._step_sequence_in_dream(actions, current_state, hidden_state)
             for _ in range(repetition):
-                current_state, real_reward, _, _ = self.environment.step(action)
+                current_state, real_reward, _, _ = environment.step(action)
                 latent_state, vae_reconstruction = self._encode_state(current_state)
                 latent_state, simulated_reward, simulated_is_done, hidden_state = self.simulated_environment.step(
                     action, hidden_state, latent_state, is_simulation_real_environment=True)
                 mdrnn_reconstruction = self.simulated_environment.current_reconstruction
 
-                self._render(vae_reconstruction)
+                self._render(vae_reconstruction, environment)
 
                 total_reward_real += real_reward
                 total_reward_sim += simulated_reward
@@ -153,12 +149,15 @@ class ModelTester(BaseTester):
                                                                                                       latent,
                                                                                                       is_simulation_real_environment=True)
                 total_reward += simulated_reward
+                print(f'{action} --- {round(simulated_reward,2)}')
                 self.simulated_environment.render()
         return total_reward
 
-    def _set_car_pos(self, start_track):
-        self.environment.environment.env.car = Car(self.environment.environment.env.world,
-                                                   *self.environment.environment.env.track[start_track][1:4])
+    def _set_car_pos(self, start_track, environment):
+        if start_track is 1:
+            return
+        environment.environment.env.car = Car(environment.environment.env.world,
+                                                   *environment.environment.env.track[start_track][1:4])
 
     def _print_results(self, total_reward_real, total_full_sim_reward, total_partial_reward_sim, avg_recon_diff):
         reward_pct_diff = round((total_reward_real - total_partial_reward_sim) / abs(total_partial_reward_sim) * 100)
@@ -178,6 +177,6 @@ class ModelTester(BaseTester):
         dists = [dist.euclidean(vae_grey[i], mdrnn_grey[i]) for i in range(len(vae_grey))]
         return np.mean(dists)
 
-    def _render(self, vae_reconstruction):
+    def _render(self, vae_reconstruction, environment):
         self.vae_render.render(vae_reconstruction)
-        self.environment.render()
+        environment.render()

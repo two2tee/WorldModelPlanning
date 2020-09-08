@@ -10,8 +10,6 @@ from utility.visualizer import Visualizer
 from environment.simulated_environment import SimulatedEnvironment
 
 
-
-
 class SimulatedPlanningController:
     def __init__(self, config, preprocessor, vae, mdrnn):
         self.config = config
@@ -112,11 +110,11 @@ class SimulatedPlanningController:
                     self.simulated_environment.render()
                     total_reward += simulated_reward
                     total_simulated_reward = total_reward
-                    print(simulated_reward)
+                    print(round(simulated_reward, 2), self.action)
                 else:
                     current_state, reward, is_done, _ = environment.step(self.action)
                     latent_state, simulated_reward, hidden_state = self._synchronize_simulated_environment(current_state, self.action, hidden_state)
-                    print(reward)
+                    print(reward, round(simulated_reward, 2), self.action)
                     total_reward += reward
                     total_simulated_reward += simulated_reward
                     environment.render()
