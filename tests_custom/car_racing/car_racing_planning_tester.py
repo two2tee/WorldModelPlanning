@@ -27,8 +27,9 @@ class PlanningTester(BasePlanningTester):
                 # "s_turn_planning_test": (self._planning_s_turn_test, {OPTIMAL_REWARD: 43, OPTIMAL_STEPS: 80, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 16, CUSTOM_SEED: 9214}),
                 # "u_turn_planning_test": (self._planning_u_turn_test,{OPTIMAL_REWARD: 40, OPTIMAL_STEPS: 80, RANDOM_REWARD: -5, TILES_TO_COMPLETE: 15, CUSTOM_SEED: 9214}),
                 # "planning_whole_track_no_right_turns_test": (self._planning_whole_track_no_right_turns_test, {OPTIMAL_REWARD: 900, OPTIMAL_STEPS: 1200, RANDOM_REWARD: -32, TILES_TO_COMPLETE: 1200, CUSTOM_SEED: 30}),
-                "planning_whole_random_track": (self._planning_whole_random_track_test, {OPTIMAL_REWARD: 900, OPTIMAL_STEPS: 1200, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 1200, CUSTOM_SEED: None})
-                }
+                # "planning_whole_random_track": (self._planning_whole_random_track_test, {OPTIMAL_REWARD: 900, OPTIMAL_STEPS: 1200, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 1200, CUSTOM_SEED: None})
+                "planning_whole_random_track": (self._planning_whole_random_track_test, {OPTIMAL_REWARD: 900, OPTIMAL_STEPS: 100, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 1200, CUSTOM_SEED: None})
+        }
 
     # TEST METHODS #######################################
 
@@ -122,8 +123,9 @@ class PlanningTester(BasePlanningTester):
             progress_bar.update(n=1)
 
         progress_bar.close()
-        custom_message = self._print_trial_results(trial_i, elapsed_time, total_reward, steps_ran, trial_results_dto)
+        custom_message = self._print_trial_results(trial_i, seed, elapsed_time, total_reward, steps_ran, trial_results_dto)
         environment.close()
+        print(action_history[0], trial_results_dto['max_reward'], seed)
         return elites, action_history, total_reward, trial_results_dto['max_reward'], seed, custom_message
 
     def _replay_planning_test(self, args):
@@ -142,16 +144,16 @@ class PlanningTester(BasePlanningTester):
         total_reward = 0
         for i, action in enumerate(actions):
             action = self._get_action(action)
-            current_state, reward, is_done, simulated_reward, simulated_is_done, latent_state, hidden_state = self._step(action, hidden_state)
+            current_state, reward, is_done, simulated_reward, simulated_is_done, latent_state, hidden_state = self._step(action, hidden_state, environment)
             steps_ran += 1
             total_reward += reward
             self._update_trial_results(trial_results_dto, reward, total_reward, steps_ran)
 
             if elites:
-                self._render_fitness_and_trajory(step_elites=elites[i], current_state=current_state)
+                self._render_fitness_and_trajory(step_elites=elites[i], current_state=current_state, environment=environment)
                 self._simulate_dream(elites[i][-1][2], current_state, hidden_state)
         environment.close()
-        self._print_trial_results(None, None, total_reward, steps_ran, trial_results_dto)
+        self._print_trial_results(None, seed, None, total_reward, steps_ran, trial_results_dto)
 
         return actions, total_reward
 
@@ -172,6 +174,8 @@ class PlanningTester(BasePlanningTester):
         return action[0] if type(action) == tuple and len(action) == 2 else action
 
     def _set_car_position(self, start_track, environment):
+        if start_track == 1:
+            return
         environment.environment.env.car = Car(environment.environment.env.world,
                                                    *environment.environment.env.track[start_track][1:4])
 
@@ -207,7 +211,7 @@ class PlanningTester(BasePlanningTester):
         trial_results_dto['reward_at_success'] = total_reward if tiles == tiles_to_complete else reward_at_success
         trial_results_dto['reward_at_optimum_steps'] = total_reward if steps_ran == optimal_steps else reward_at_optimum_steps
 
-    def _print_trial_results(self, trial, elapsed_time, total_reward, steps_ran, trial_results_dto):
+    def _print_trial_results(self, trial, seed, elapsed_time, total_reward, steps_ran, trial_results_dto):
         test_name = trial_results_dto['test_name']
         optimal_steps = trial_results_dto['optimal_steps']
         optimal_reward = trial_results_dto[OPTIMAL_REWARD]
@@ -224,7 +228,7 @@ class PlanningTester(BasePlanningTester):
         elapsed_time_str = '' if elapsed_time is None else f'Elapsed_time: {round(elapsed_time,0)}'
         success_str = f'Test success: {test_success} | Reward at success: {reward_at_success} | Steps on Success: {steps_at_success}\n' \
             if test_success else f'Test success: {test_success}\n'
-        message = f'Elapsed_time: {elapsed_time_str}\n' \
+        message = f'Elapsed_time: {elapsed_time_str}\n | seed: {seed}' \
                   f'| Total reward: {round(total_reward, 2)} | Max reward: {round(trial_results_dto["max_reward"],2)} |  Steps on exit: {steps_ran}\n' \
                   f'| {success_str}' \
                   f'| Agent reward at optimal step {optimal_steps} : {reward_at_optimum_steps}\n' \

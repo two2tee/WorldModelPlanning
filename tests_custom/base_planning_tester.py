@@ -43,7 +43,7 @@ class BasePlanningTester(BaseTester):
     def get_test_functions(self):
         return NotImplemented
 
-    def _print_trial_results(self, trial, elapsed_time, total_reward, steps_ran, trial_results_dto):
+    def _print_trial_results(self, trial, seed, elapsed_time, total_reward, steps_ran, trial_results_dto):
         return NotImplemented
 
     def _run_trial(self, trial_i, args, seed):
@@ -161,12 +161,10 @@ class BasePlanningTester(BaseTester):
     def _run_cached_session(self):
         print('--- RUNNING CACHED PLANNING TESTS ---')
         session = self._load_test_session(session_name=self.config['test_suite']['planning_session_to_load'])
-        print(session)
         tests = self.get_test_functions()
         session_reward = 0
         for test_name in session.keys():
-            best_trial, best_actions, best_reward, elites, seed = self._get_best_trial_action_and_reward(
-                session[test_name])  # ONLY RUN BEST TRIALS
+            best_trial, best_actions, best_reward, elites, seed = self._get_best_trial_action_and_reward(session[test_name])  # ONLY RUN BEST TRIALS
             print(f'Reload actions from {test_name}, trial {best_trial} with best reward {best_reward}')
             test_func, args = tests[test_name]
             args[ACTION_HISTORY] = best_actions
@@ -259,7 +257,7 @@ class BasePlanningTester(BaseTester):
 
     def _get_best_trial_action_and_reward(self, test_result):
         trial_seeds = None
-        if len(test_result) is 5:
+        if len(test_result) is 5: # 5 : testname, actions, finalrewards, elites, seeds
             test_name, trial_actions, trial_rewards, trial_elites, trial_seeds = test_result
         else:
             test_name, trial_actions, trial_rewards, trial_elites = test_result
