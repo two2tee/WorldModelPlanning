@@ -275,8 +275,6 @@ class MDRNNTrainer:
         cumulative_losses = {"loss": 0, "latent_loss": 0, "terminal_loss": 0, "reward_loss": 0}
         loader = self.train_loader if is_train else self.test_loader
 
-
-
         if is_train:
             cumulative_losses = self._train_epoch(epoch, cumulative_losses, loader, include_reward)
         else:
