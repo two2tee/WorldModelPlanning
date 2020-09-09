@@ -6,6 +6,7 @@
 
 import torch
 import numpy as np
+from gym.envs.box2d.car_dynamics import Car
 from utility.visualizer import Visualizer
 from environment.simulated_environment import SimulatedEnvironment
 
@@ -95,10 +96,16 @@ class SimulatedPlanningController:
 
             is_done = False
             total_steps, total_reward, total_simulated_reward = 0, 0, 0
-            current_state = environment.reset()
+
+            current_state = environment.reset(seed=9214)
+            # self._set_car_position(103, environment)
+            # for a in [[0,0.5,0] for i in range(40)]:
+            #     current_state, reward, is_done, _ = environment.step(a)
+
             latent_state, simulated_reward, hidden_state = self._synchronize_simulated_environment(current_state, self.action)
 
-            while not is_done:
+            # while not is_done:
+            while True:
                 if not self.config['is_manual_control']:
                     if self.config['planning']['planning_agent'] == "MCTS":
                         self.action = agent.search(self.simulated_environment, latent_state, hidden_state)
@@ -110,7 +117,7 @@ class SimulatedPlanningController:
                     self.simulated_environment.render()
                     total_reward += simulated_reward
                     total_simulated_reward = total_reward
-                    print(round(simulated_reward, 2), self.action)
+                    # print(round(simulated_reward, 2), self.action)
                 else:
                     current_state, reward, is_done, _ = environment.step(self.action)
                     latent_state, simulated_reward, hidden_state = self._synchronize_simulated_environment(current_state, self.action, hidden_state)
@@ -125,3 +132,7 @@ class SimulatedPlanningController:
 
             return total_steps, total_reward, total_simulated_reward
 
+    def _set_car_position(self, start_track, environment):
+        if start_track == 1:
+            return
+        environment.environment.env.car = Car(environment.environment.env.world, *environment.environment.env.track[start_track][1:4])

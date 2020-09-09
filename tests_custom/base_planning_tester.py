@@ -1,20 +1,18 @@
 import os
 import pickle
-from pprint import pprint
-
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
-from datetime import date, datetime
+from tqdm import tqdm
+from pprint import pprint
 from os.path import exists, join
 from torch import multiprocessing
-from concurrent.futures.process import ProcessPoolExecutor
-from tests_custom.base_tester import BaseTester
+from datetime import date, datetime
 from utility.visualizer import Visualizer
-from utility.logging.planning_logger import PlanningLogger
+from tests_custom.base_tester import BaseTester
 from planning.agent_factory import get_agent_parameters
-
-from tqdm import tqdm
+from concurrent.futures.process import ProcessPoolExecutor
+from utility.logging.planning_logger import PlanningLogger
 
 # ARGS KEYS PLANNING
 ACTION_HISTORY = 'action_history'
@@ -207,9 +205,9 @@ class BasePlanningTester(BaseTester):
             latent, simulated_reward, simulated_is_done, hidden = self.simulated_environment.step(action, hidden,
                                                                                                   latent,
                                                                                                   is_simulation_real_environment=True)
+            print(round(simulated_reward, 2), [round(action[0], 3), round(action[1], 3), round(action[2], 3)])
             total_reward += simulated_reward
             self.simulated_environment.render()
-        print(total_reward)
         return total_reward
 
     def _save_test_session(self, test_results):

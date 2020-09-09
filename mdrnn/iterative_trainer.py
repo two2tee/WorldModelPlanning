@@ -57,7 +57,6 @@ class IterativeTrainer:
         self.num_iterations = config["iterative_trainer"]["num_iterations"]
         self.sequence_length = config["iterative_trainer"]["sequence_length"]
         self.iteration_stats_dir = join(self.config['mdrnn_dir'], 'iteration_stats')
-        self.is_random_policy_not_planning = config["iterative_trainer"]["is_random_policy_not_planning"]
         self.max_test_threads = config["iterative_trainer"]["max_test_threads"]
         self.is_replay_buffer = config["iterative_trainer"]["replay_buffer"]['is_replay_buffer']
         self.max_buffer_size = config["iterative_trainer"]["replay_buffer"]['max_buffer_size']
@@ -205,7 +204,7 @@ class IterativeTrainer:
         actions, states, rewards, terminals = [], [], [], []
         progress_description = f"Data generation at iteration {iteration} | thread: {thread_id} | rollout: {rollout_number}/{num_rollouts_per_thread}"
         for _ in tqdm(range(self.sequence_length+1), desc=progress_description, position=thread_id-1):
-            action = environment.action_space.sample() if self.is_random_policy_not_planning else agent_wrapper.search(state)
+            action = agent_wrapper.search(state)
             state, reward, done, info = environment.step(action)
             agent_wrapper.synchronize(state, action)
             state = np.array(Image.fromarray(state).resize(size=(self.img_width, self.img_height)))
