@@ -232,8 +232,8 @@
             "is_delta_sampling": false
         },
         "random_mutation_hill_climb": {
-            "horizon": 25,
-            "max_generations": 25,
+            "horizon": 20,
+            "max_generations": 20,
             "is_shift_buffer": false,
             "is_rollout": false,
             "max_rollouts": 1,
