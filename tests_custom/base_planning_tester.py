@@ -76,11 +76,10 @@ class BasePlanningTester(BaseTester):
 
     def run_specific_test(self, test_name, session_name=None):
         self.session_name = self._make_session_name(session_name)
-        with torch.no_grad():
-            test_func, args = self.get_test_functions()[test_name]
-            trial_actions, trial_rewards, trial_elites, trial_max_rewards, trial_seeds = test_func(args=args)
-            plt.close('all')
-            return test_name, trial_actions, trial_rewards, trial_elites, trial_max_rewards, trial_seeds
+        test_func, args = self.get_test_functions()[test_name]
+        trial_actions, trial_rewards, trial_elites, trial_max_rewards, trial_seeds = test_func(args=args)
+        plt.close('all')
+        return test_name, trial_actions, trial_rewards, trial_elites, trial_max_rewards, trial_seeds
 
     def _run_multithread_new_test_session(self):
         with ProcessPoolExecutor(max_workers=multiprocessing.cpu_count()) as executor:
@@ -97,13 +96,12 @@ class BasePlanningTester(BaseTester):
     def _run_singlethread_new_test_session(self):
         test_results = {}
         tests = self.get_test_functions()
-        with torch.no_grad():
-            for test_name in tests.keys():
-                test_func, args = tests[test_name]
-                trial_actions, trial_rewards, trial_elites, trial_max_rewards, trial_seeds = test_func(args=args)
-                test_results[test_name] = (test_name, trial_actions, trial_rewards, trial_elites, trial_seeds)
-                print(f'Average reward over {len(trial_rewards)} trials: {np.mean(trial_rewards)}')
-            self._save_test_session(test_results)
+        for test_name in tests.keys():
+            test_func, args = tests[test_name]
+            trial_actions, trial_rewards, trial_elites, trial_max_rewards, trial_seeds = test_func(args=args)
+            test_results[test_name] = (test_name, trial_actions, trial_rewards, trial_elites, trial_seeds)
+            print(f'Average reward over {len(trial_rewards)} trials: {np.mean(trial_rewards)}')
+        self._save_test_session(test_results)
         plt.close('all')
         return self._get_session_total_best_reward(test_results)
 
@@ -205,9 +203,10 @@ class BasePlanningTester(BaseTester):
             latent, simulated_reward, simulated_is_done, hidden = self.simulated_environment.step(action, hidden,
                                                                                                   latent,
                                                                                                   is_simulation_real_environment=True)
-            print(round(simulated_reward, 2), [round(action[0], 3), round(action[1], 3), round(action[2], 3)])
+            # print(round(simulated_reward, 2), [round(action[0], 3), round(action[1], 3), round(action[2], 3)])
             total_reward += simulated_reward
             self.simulated_environment.render()
+        print(f'expected dream reward: {round(total_reward, 2)}')
         return total_reward
 
     def _save_test_session(self, test_results):

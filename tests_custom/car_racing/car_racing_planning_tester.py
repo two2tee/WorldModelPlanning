@@ -10,6 +10,7 @@ OPTIMAL_REWARD = 'optimal_reward'
 RANDOM_REWARD = 'random_reward'
 TILES_TO_COMPLETE = 'tiles_to_complete'
 START_TRACK = 'start_track'
+PRE_ACTIONS = 'pre_actions'
 
 class PlanningTester(BasePlanningTester):
     def __init__(self, config, vae, mdrnn, preprocessor, planning_agent):
@@ -21,18 +22,73 @@ class PlanningTester(BasePlanningTester):
 
     def get_test_functions(self):
         return {  # (test_func, args)
-                # "forward_planning_test": (self._planning_forward_test, {OPTIMAL_REWARD: 66, OPTIMAL_STEPS: 100, RANDOM_REWARD: -7, TILES_TO_COMPLETE: 25, CUSTOM_SEED: 9214}),
-                # "left_turn_planning_test": (self._planning_left_turn_test, {OPTIMAL_REWARD: 23, OPTIMAL_STEPS: 60, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 10, CUSTOM_SEED: 9214}),
-                # "right_turn_planning_test": (self._planning_right_turn_test,{OPTIMAL_REWARD: 33, OPTIMAL_STEPS: 60, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 11, CUSTOM_SEED: 2}),
-                # "s_turn_planning_test": (self._planning_s_turn_test, {OPTIMAL_REWARD: 43, OPTIMAL_STEPS: 80, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 16, CUSTOM_SEED: 9214}),
-                # "u_turn_planning_test": (self._planning_u_turn_test, {OPTIMAL_REWARD: 40, OPTIMAL_STEPS: 80, RANDOM_REWARD: -5, TILES_TO_COMPLETE: 15, CUSTOM_SEED: 9214}),
-                # "planning_whole_track_no_right_turns_test": (self._planning_whole_track_no_right_turns_test, {OPTIMAL_REWARD: 900, OPTIMAL_STEPS: 1200, RANDOM_REWARD: -32, TILES_TO_COMPLETE: 1200, CUSTOM_SEED: 30}),
-                "planning_whole_random_track": (self._planning_whole_random_track_test, {OPTIMAL_REWARD: 900, OPTIMAL_STEPS: 1200, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 1200, CUSTOM_SEED: None})
-                # "planning_specific_track": (self._planning_whole_random_track_test, {OPTIMAL_REWARD: 900, OPTIMAL_STEPS: 1200, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 1200, CUSTOM_SEED: 9214})
+                # "planning_forward_left_side": (self._planning_forward_left_side, {OPTIMAL_REWARD: 66, OPTIMAL_STEPS: 100, RANDOM_REWARD: -7, TILES_TO_COMPLETE: 25, CUSTOM_SEED: 9214, PRE_ACTIONS: None}),
+                # "planning_forward_right_side": (self._planning_forward_right_side, {OPTIMAL_REWARD: 66, OPTIMAL_STEPS: 100, RANDOM_REWARD: -7, TILES_TO_COMPLETE: 25, CUSTOM_SEED: 9214, PRE_ACTIONS: None}),
+                # "planning_head_to_grass_right": (self._planning_head_to_grass_right, {OPTIMAL_REWARD: 66, OPTIMAL_STEPS: 100, RANDOM_REWARD: -7, TILES_TO_COMPLETE: 25, CUSTOM_SEED: 9214, PRE_ACTIONS: None}),
+                # "planning_head_to_grass_left": (self._planning_head_to_grass_left, {OPTIMAL_REWARD: 66, OPTIMAL_STEPS: 100, RANDOM_REWARD: -7, TILES_TO_COMPLETE: 25, CUSTOM_SEED: 9214, PRE_ACTIONS: None}),
+                # "forward_planning_test": (self._planning_forward_test, {OPTIMAL_REWARD: 66, OPTIMAL_STEPS: 100, RANDOM_REWARD: -7, TILES_TO_COMPLETE: 25, CUSTOM_SEED: 9214, PRE_ACTIONS: None}),
+                # "left_turn_planning_test": (self._planning_left_turn_test, {OPTIMAL_REWARD: 23, OPTIMAL_STEPS: 60, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 10, CUSTOM_SEED: 9214, PRE_ACTIONS: None}),
+                # "right_turn_planning_test": (self._planning_right_turn_test,{OPTIMAL_REWARD: 33, OPTIMAL_STEPS: 60, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 11, CUSTOM_SEED: 2, PRE_ACTIONS: None}),
+                # "s_turn_planning_test": (self._planning_s_turn_test, {OPTIMAL_REWARD: 43, OPTIMAL_STEPS: 80, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 16, CUSTOM_SEED: 9214, PRE_ACTIONS: None}),
+                # "u_turn_planning_test": (self._planning_u_turn_test, {OPTIMAL_REWARD: 40, OPTIMAL_STEPS: 280, RANDOM_REWARD: -5, TILES_TO_COMPLETE: 15, CUSTOM_SEED: 9214, PRE_ACTIONS: None}),
+                # "planning_whole_track_no_right_turns_test": (self._planning_whole_track_no_right_turns_test, {OPTIMAL_REWARD: 900, OPTIMAL_STEPS: 1200, RANDOM_REWARD: -32, TILES_TO_COMPLETE: 1200, CUSTOM_SEED: 30, PRE_ACTIONS: None}),
+                # "planning_whole_random_track": (self._planning_whole_random_track_test, {OPTIMAL_REWARD: 900, OPTIMAL_STEPS: 1200, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 1200, CUSTOM_SEED: None, PRE_ACTIONS: None})
+                "planning_specific_track": (self._planning_whole_random_track_test, {OPTIMAL_REWARD: 900, OPTIMAL_STEPS: 1200, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 1200, CUSTOM_SEED: 9214, PRE_ACTIONS: None})
 
         }
 
     # TEST METHODS #######################################
+
+    def _planning_forward_left_side(self, args):
+        pre_actions = []
+        pre_actions.extend([[-1, 0.1, 0] for _ in range(30)])
+        pre_actions.extend([[1, 0.1, 0] for _ in range(5)])
+        pre_actions.extend([[0.15, 0.1, 0] for _ in range(35)])
+        pre_actions.extend([[0, 0.1, 0] for _ in range(30)])
+
+        args[PRE_ACTIONS] = pre_actions
+        args[TEST_NAME] = 'Head to grass left planning test'
+        args[START_TRACK] = 25
+        return self._run_plan_or_replay(args=args)
+
+    def _planning_forward_right_side(self, args):
+        pre_actions = []
+        pre_actions.extend([[1, 0.1, 0] for _ in range(25)])
+        pre_actions.extend([[-1, 0.1, 0] for _ in range(5)])
+        pre_actions.extend([[-0.15, 0.1, 0] for _ in range(35)])
+        pre_actions.extend([[0, 0.1, 0] for _ in range(30)])
+
+        args[PRE_ACTIONS] = pre_actions
+        args[TEST_NAME] = 'Head to grass left planning test'
+        args[START_TRACK] = 25
+        return self._run_plan_or_replay(args=args)
+
+    def _planning_head_to_grass_left(self, args):
+        pre_actions = []
+        pre_actions.extend([[1, 0.1, 0] for _ in range(25)])
+        pre_actions.extend([[-1, 0.1, 0] for _ in range(5)])
+        pre_actions.extend([[-0.15, 0.1, 0] for _ in range(30)])
+        pre_actions.extend([[0.05, 0.1, 0] for _ in range(20)])
+        pre_actions.extend([[0.05, 0.1, 0] for _ in range(5)])
+        pre_actions.extend([[-1, 0.0, 0] for _ in range(15)])
+        pre_actions.extend([[-0.1, 0.0, 0.01] for _ in range(20)])
+        args[PRE_ACTIONS] = pre_actions
+        args[TEST_NAME] = 'Head to grass left planning test'
+        args[START_TRACK] = 25
+        return self._run_plan_or_replay(args=args)
+
+    def _planning_head_to_grass_right(self, args):
+        pre_actions = []
+        pre_actions.extend([[-1, 0.1, 0] for _ in range(25)])
+        pre_actions.extend([[0.15, 0.1, 0] for _ in range(30)])
+        pre_actions.extend([[-0.05, 0.1, 0] for _ in range(20)])
+        pre_actions.extend([[1, 0.0, 0] for _ in range(15)])
+        pre_actions.extend([[0.1, 0.0, 0.01] for _ in range(10)])
+        args[PRE_ACTIONS] = pre_actions
+        args[TEST_NAME] = 'Head to grass left planning test'
+        args[START_TRACK] = 25
+        return self._run_plan_or_replay(args=args)
+
 
     def _planning_forward_test(self, args):
         args[TEST_NAME] = 'Forward planning test'
@@ -103,14 +159,35 @@ class PlanningTester(BasePlanningTester):
         total_steps = args['optimal_steps'] + 75
         max_negative_count = self.config['test_suite']['car_racing']['max_negative_count']
         progress_bar = tqdm(total=total_steps)
+
+        if args[PRE_ACTIONS] is not None:
+            for action in args[PRE_ACTIONS]:
+                current_state, reward, is_done, simulated_reward, simulated_is_done, latent_state, hidden_state = \
+                    self._step(action, hidden_state, environment)
+
         for step in range(total_steps):
             action, step_elites = self._search_action(latent_state, hidden_state)
             elites.append(step_elites)
 
             self._render_fitness_and_trajory(current_state, step_elites, environment)
 
-            if self.config['planning']['planning_agent'] != "RANDOM":
-                self._simulate_dream(self.planning_agent.current_elite.action_sequence, current_state, hidden_state)
+            # if self.config['planning']['planning_agent'] != "RANDOM":
+            #     print()
+            #     print('-- planned trajectory --')
+            #     self._simulate_dream(self.planning_agent.current_elite.action_sequence, current_state, hidden_state)
+            #     hard_turn = []
+            #     hard_turn.extend([[-1, self.planning_agent.current_elite.action_sequence[0][1], 0] for _ in range(15)])
+            #     hard_turn.extend([[0, self.planning_agent.current_elite.action_sequence[0][1], 0] for _ in range(10)])
+            #     hard_turn2 = []
+            #     hard_turn2.extend([[1, self.planning_agent.current_elite.action_sequence[0][1], 0] for _ in range(15)])
+            #     hard_turn2.extend([[0, self.planning_agent.current_elite.action_sequence[0][1], 0] for _ in range(10)])
+            #     forward = [[0, self.planning_agent.current_elite.action_sequence[0][1], 0] for _ in range(25)]
+            #     print('\n-- hard left --')
+            #     self._simulate_dream(hard_turn, current_state, hidden_state)
+            #     print('\n-- hard right --')
+            #     self._simulate_dream(hard_turn2, current_state, hidden_state)
+            #     print('\n-- forward --')
+            #     self._simulate_dream(forward, current_state, hidden_state)
 
             if is_done or negative_counter == max_negative_count:
                 break
@@ -143,6 +220,11 @@ class PlanningTester(BasePlanningTester):
         self.simulated_environment.reset()
         hidden_state = self.simulated_environment.get_hidden_zeros_state()
         self._set_car_position(args[START_TRACK], environment)
+
+        if args[PRE_ACTIONS] is not None:
+            for action in args[PRE_ACTIONS]:
+                current_state, reward, is_done, simulated_reward, simulated_is_done, latent_state, hidden_state = \
+                    self._step(action, hidden_state, environment)
 
         trial_results_dto = self._get_trial_results_dto(args)
 

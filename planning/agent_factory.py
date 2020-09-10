@@ -2,7 +2,7 @@ from planning.simulation.mcts_simulation import MCTS as MCTS_simulation
 from planning.simulation.rolling_horizon_simulation import RHEA as RHEA_simulation
 from planning.simulation.random_mutation_hill_climbing_simulation import RMHC as RMHC_simulation
 from planning.simulation.random_simulation import RandomAgent as RANDOM_simulation
-
+from planning.simulation.gradient_hill_climbing_simulation import SGDHC as SGDHC_simulation
 
 def get_planning_agent(config):
     agent = config['planning']['planning_agent']
@@ -14,6 +14,7 @@ def _get_planning_agent(agent, config):
     simulated_agents = {"RHEA": RHEA_simulation(*config['planning']['rolling_horizon'].values()),
                         "RMHC": RMHC_simulation(*config['planning']['random_mutation_hill_climb'].values()),
                         "MCTS": MCTS_simulation(*config['planning']['monte_carlo_tree_search'].values()),
+                        "SGDHC": SGDHC_simulation(*config['planning']['gradient_hill_climb'].values()),
                         "RANDOM": RANDOM_simulation()
                         }
     if agent not in simulated_agents:
@@ -27,7 +28,8 @@ def get_agent_parameters(config):
     agent_params = {
         'RHEA': config['planning']['rolling_horizon'],
         'RMHC': config['planning']['random_mutation_hill_climb'],
-        "MCTS": config['planning']['monte_carlo_tree_search'],
+        'MCTS': config['planning']['monte_carlo_tree_search'],
+        'SGDHC': config['planning']['gradient_hill_climb'],
         "RANDOM": {}
     }
     if agent not in agent_params:

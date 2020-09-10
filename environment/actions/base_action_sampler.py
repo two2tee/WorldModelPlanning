@@ -17,6 +17,12 @@ class BaseActionSampler:
     def sample(self, previous_action=None):
         return NotImplemented
 
+    def sample_logits(self):
+        return NotImplemented
+
+    def convert_logits_to_action(self, logits):
+        return NotImplemented
+
     def brownian_sample(self, previous_action):
         return NotImplemented
 
@@ -25,3 +31,4 @@ class BaseActionSampler:
 
     def discrete_action_space(self, action=None):
         return NotImplemented
+

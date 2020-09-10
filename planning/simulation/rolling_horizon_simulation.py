@@ -5,6 +5,7 @@
 #  Written by Thor V.A.N. Olesen <thorolesen@gmail.com> & Dennis T.T. Nguyen <dennisnguyen3000@yahoo.dk>.
 
 import copy
+import torch
 from planning.interfaces.individual import Individual
 from tuning.evolution_handler import EvolutionHandler
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -81,21 +82,22 @@ class RHEA(AbstractRollingHorizon):
             [self._evaluate_individual(individual, environment) for individual in population]
 
     def _evaluate_individual(self, individual, environment):
-        is_done = False
-        total_reward = 0
-        latent = self.latent
-        hidden = self.hidden
+        with torch.no_grad():
+            is_done = False
+            total_reward = 0
+            latent = self.latent
+            hidden = self.hidden
 
-        for action in individual.action_sequence:
-            if not is_done:
-                latent, reward, is_done, hidden = environment.step(action, hidden, latent, is_simulation_real_environment=False)
-                total_reward += reward
-            else:
-                break
-        if self.is_rollout and not is_done:
-            total_reward += self._rollout(environment, latent, hidden, self.is_parallel_rollouts)
+            for action in individual.action_sequence:
+                if not is_done:
+                    latent, reward, is_done, hidden = environment.step(action, hidden, latent, is_simulation_real_environment=False)
+                    total_reward += reward
+                else:
+                    break
+            if self.is_rollout and not is_done:
+                total_reward += self._rollout(environment, latent, hidden, self.is_parallel_rollouts)
 
-        individual.fitness += total_reward
+            individual.fitness += total_reward
 
     def _rollout(self, environment, latent, hidden, is_parallel=False):
         total_reward = 0

@@ -36,7 +36,7 @@ class SimulatedEnvironment:
             self.figure_num = self.figure.number
             self.current_reconstruction = None
 
-    def step(self, action, hidden_state_h=None, latent_state_z=None, is_simulation_real_environment=True):
+    def step(self, action, hidden_state_h=None, latent_state_z=None, is_simulation_real_environment=True, is_reward_tensor=False):
         hidden_state_h = self.current_hidden_states if hidden_state_h is None else hidden_state_h
         latent_state_z = self.current_latent_state_z if latent_state_z is None else latent_state_z
         next_latent_state_z, rewards, dones, next_hidden_states = self._step_mdrnn(action, latent_state_z, hidden_state_h)
@@ -44,8 +44,9 @@ class SimulatedEnvironment:
         if is_simulation_real_environment:  # Keep track of latent and hidden states if hallucination is real environment
             self._track_states(next_latent_state_z, next_hidden_states)
 
-        # (z', r, d, h')
-        return self._extract_mdrnn_outputs(next_latent_state_z, rewards, dones, next_hidden_states)
+        next_z, r, d, next_h = self._extract_mdrnn_outputs(next_latent_state_z, rewards, dones, next_hidden_states)
+        r = r if is_reward_tensor else r.item()
+        return next_z, r, d, next_h
 
     def reset(self):
         if self.is_render_reconstructions:
@@ -53,13 +54,13 @@ class SimulatedEnvironment:
         return self._reset_states()
 
     def _step_mdrnn(self, action, latent_z, hidden_states):
-        with torch.no_grad():
-            action = torch.tensor(action).unsqueeze(0).unsqueeze(0)
-            latent_z = latent_z.unsqueeze(0)
-            means, standard_deviations, log_mixture_weights, rewards, dones, next_hidden_states = self.mdrnn.forward(action, latent_z, hidden_states)
-            log_mixture_weights = log_mixture_weights.squeeze()
-            next_latent_z = self._sample_next_z(means, standard_deviations, log_mixture_weights)
-            return next_latent_z, rewards, dones, next_hidden_states
+        action = action if type(action) == torch.Tensor else torch.tensor(action)
+        action = action.unsqueeze(0).unsqueeze(0)
+        latent_z = latent_z.unsqueeze(0)
+        means, standard_deviations, log_mixture_weights, rewards, dones, next_hidden_states = self.mdrnn.forward(action, latent_z, hidden_states)
+        log_mixture_weights = log_mixture_weights.squeeze()
+        next_latent_z = self._sample_next_z(means, standard_deviations, log_mixture_weights)
+        return next_latent_z, rewards, dones, next_hidden_states
 
     def _sample_next_z(self, z_means, z_standard_deviations, log_mixture_weights):  # input: (1, 1, 5, 32) --> (seq_len, batch_size, num_gaussians, latent_size)
         # Inspiration: https://github.com/hardmaru/WorldModelsExperiments/blob/244f79c2aaddd6ef994d155cd36b34b6d907dcfe/carracing/dream_env.py#L70
@@ -113,10 +114,10 @@ class SimulatedEnvironment:
         self.current_latent_state_z = next_latent_state_z
 
     def _extract_mdrnn_outputs(self, next_latent_state_z, rewards, dones, next_hidden_states):
-        next_z = next_latent_state_z.clone().detach()
-        reward = rewards.item()
+        next_z = next_latent_state_z.detach()
+        reward = rewards
         is_done = (dones > 0).item()
-        next_h = [next_hidden_states[0].clone().detach(), next_hidden_states[1].clone().detach()]
+        next_h = [next_hidden_states[0].detach(), next_hidden_states[1].detach()]
         return next_z, reward, is_done, next_h
 
     def render(self, reconstruction=None):
@@ -133,6 +134,12 @@ class SimulatedEnvironment:
 
     def sample(self, previous_action=None):
         return self.action_sampler.sample(previous_action)
+
+    def sample_logits(self):
+        return self.action_sampler.sample_logits()
+
+    def convert_logits_to_action(self, logits):
+        return self.action_sampler.convert_logits_to_action(logits)
 
     def discrete_sample(self):
         return self.action_sampler.discrete_sample()
