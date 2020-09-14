@@ -18,13 +18,16 @@ class CarRacingActionSampler(BaseActionSampler):
     def sample_logits(self):
         return [torch.randn(1, requires_grad=True),
                 torch.randn(1, requires_grad=True),
-                torch.randn(1, requires_grad=True)]
+                torch.scalar_tensor(0, requires_grad=False)]
 
     def convert_logits_to_action(self, logits):
         action = logits.clone()
+        speed = torch.tanh(action[1])
+        gas = speed if speed > 0 else 0
+        brake = abs(speed) if speed < 0 else 0
         action[0] = torch.tanh(action[0])
-        action[1] = torch.sigmoid(action[1])
-        action[2] = torch.sigmoid(action[2])
+        action[1] = gas
+        action[2] = brake
         return action
 
     def _continous_sample(self, previous_action=None):

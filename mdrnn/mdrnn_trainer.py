@@ -144,7 +144,8 @@ class MDRNNTrainer:
             train(epoch)
             test_losses = test(epoch)
             self.scheduler.step(test_losses['average_loss'])
-            self.earlystopping.step(test_losses['average_loss'])
+            if self.is_iterative:
+                self.earlystopping.step(test_losses['average_loss'])
 
             is_best = not current_best or test_losses['average_loss'] < current_best
             current_best = test_losses['average_loss'] if is_best else current_best
@@ -156,7 +157,7 @@ class MDRNNTrainer:
                                    'scheduler': self.scheduler.state_dict(),
                                    'earlystopping': self.earlystopping.state_dict()
                                    }, is_best, iteration)
-            if self.earlystopping.stop:
+            if self.earlystopping.stop and self.is_iterative:
                 print(f"End of Training because of early stopping at epoch {epoch}")
                 break
         self.logger.end_log_training('mdrnn')
