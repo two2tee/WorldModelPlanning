@@ -109,6 +109,7 @@ if __name__ == '__main__':
     vae = VAE(config)
     vae_trainer = VaeTrainer(config, frame_preprocessor)
     vae = vae_trainer.reload_model(vae, device='cpu')
+    agent = get_planning_agent()
 
     experiment_names = ['World_Model_Iter_A']
     for experiment_name in experiment_names:
@@ -120,15 +121,14 @@ if __name__ == '__main__':
 
         iteration_results = {}
         for file in files:
-            # if get_digit_from_path(file) < 6:
-            #     continue
+            if get_digit_from_path(file) < 0:
+                continue
             print(f'current experiment {experiment_name} - file: {file}')
             current_iteration = int(get_digit_from_path(file))
             iteration_result = IterationResult(iteration=current_iteration)
             mdrnn = reload_model(file)
 
             session_name = make_session_name(config["experiment_name"], config['planning']['planning_agent'], get_digit_from_path(file))
-            agent = get_planning_agent()
             tester = get_planning_tester(config, vae, mdrnn, frame_preprocessor, agent)
             test_name, trial_actions, trials_rewards, trial_elites, trial_max_rewards, trial_seeds = \
                 tester.run_specific_test(config['iterative_trainer']['test_scenario'], session_name=session_name)
@@ -139,7 +139,7 @@ if __name__ == '__main__':
             iteration_result.trials_rewards = trials_rewards
             iteration_result.trials_max_rewards = trial_max_rewards
             iteration_results[current_iteration] = (iteration_result)
-            save_iteration_stats(iteration_results, experiment_name)
+            # save_iteration_stats(iteration_results, experiment_name)
             log_iteration_test_results(iteration_result, experiment_name)
 
 

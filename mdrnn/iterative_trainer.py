@@ -77,6 +77,11 @@ class IterativeTrainer:
             iteration_results = manager.dict(iteration_results)
             test_threads = []
             start_time = time.time()
+
+            if iterations_count == 0:  # Pre-test non iterative model for baseline
+                iteration_results[iterations_count] = IterationResult(iteration=0)
+                self._test_planning(iteration=0, iteration_results=iteration_results, test_threads=test_threads)
+
             for _ in tqdm(range(self.num_iterations), desc=f"Current iteration {iterations_count+1}"):  # TODO: replace with "while task (900+ reward) is not completed"
                 iterations_count += 1
                 iteration_results[iterations_count] = IterationResult(iteration=iterations_count)

@@ -14,3 +14,13 @@ class BaseLogger:
 
     def end_log(self):
         pass
+
+    def _add_text(self, tag, value, step, logger):
+        if not self._is_logging:
+            return
+        logger.add_text(tag=tag, text_string=value, global_step=step)
+
+    def _add_scalar(self, tag, value, step, logger):
+        if not self._is_logging:
+            return
+        logger.add_scalar(tag, value, step)
