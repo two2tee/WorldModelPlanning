@@ -58,6 +58,7 @@ class IterativeTrainer:
         self.sequence_length = config["iterative_trainer"]["sequence_length"]
         self.iteration_stats_dir = join(self.config['mdrnn_dir'], 'iteration_stats')
         self.max_test_threads = config["iterative_trainer"]["max_test_threads"]
+        self.max_test_threads = self.threads if self.max_test_threads > self.threads else self.max_test_threads
         self.is_replay_buffer = config["iterative_trainer"]["replay_buffer"]['is_replay_buffer']
         self.max_buffer_size = config["iterative_trainer"]["replay_buffer"]['max_buffer_size']
         self._rollout_counter = self._get_rollout_file_count()
@@ -122,7 +123,6 @@ class IterativeTrainer:
         else:
             rollout_counter.value = rollout_counter.value + 1
 
-
     def _get_rollout_file_count(self):
         return len([name for root, dirs, files in os.walk(self.data_dir) for name in files])
 
@@ -139,7 +139,7 @@ class IterativeTrainer:
         environment.close()
 
     def _test_planning(self, iteration, iteration_results, test_threads):
-        if len(test_threads) > self.max_test_threads or self.threads == 1:  # Prevent spawning too many test threads
+        if len(test_threads) >= self.max_test_threads:  # Prevent spawning too many test threads
             [p.join() for p in test_threads]
         p = Process(target=self._test_thread, args=[iteration, iteration_results])
         p.start()
@@ -167,12 +167,10 @@ class IterativeTrainer:
         print(f'Running test for iteration: {iteration}')
         preprocessor = Preprocessor(self.config['preprocessor'])
         vae, mdrnn = self._get_vae_mdrnn()
-        environment = get_environment(self.config)  # Set environment
         tester = get_planning_tester(self.config, vae, mdrnn, preprocessor, self.planning_agent)
 
         session_name = self._make_session_name(self.config["experiment_name"], self.config['planning']['planning_agent'], iteration)
         test_name, trials_actions, trials_rewards, trials_elites, trial_max_rewards, trial_seeds = tester.run_specific_test(self.test_scenario, session_name)
-        environment.close()
 
         iteration_result = iteration_results[iteration]
         iteration_result.agent_name = self.config['planning']['planning_agent']
@@ -229,12 +227,13 @@ class IterativeTrainer:
 
     def _log_iteration_test_results(self, iteration_result):
         logger = PlanningLogger(is_logging=True)
-        logger.start_log(name=f'{self._make_session_name(self.config["experiment_name"], iteration_result.agent_name, iteration_result.iteration)}')
+        logger.start_log(name=f'{self.config["experiment_name"]}_main_{iteration_result.agent_name}')
 
-        logger.log_iteration_max_reward(test_name=iteration_result.test_name, trials=iteration_result.iteration_result.total_trials,
+        logger.log_iteration_max_reward(test_name=iteration_result.test_name, trials=iteration_result.total_trials,
                                              iteration=iteration_result.iteration, max_reward=iteration_result.get_average_max_reward())
-        logger.log_iteration_avg_reward(test_name=iteration_result.test_name, trials=iteration_result.iteration_result.total_trials,
+        logger.log_iteration_avg_reward(test_name=iteration_result.test_name, trials=iteration_result.total_trials,
                                         iteration=iteration_result.iteration, avg_reward=iteration_result.get_average_total_reward())
+        logger.log_reward_mean_std(iteration_result.test_name, iteration_result.trials_rewards, iteration_result.iteration)
         logger.end_log()
 
 

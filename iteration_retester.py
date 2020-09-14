@@ -29,6 +29,7 @@ iteration_stats_dir = join(config['mdrnn_dir'], 'iteration_stats')
 
 
 def reload_model(file_location):
+    environment = get_environment(config)
     mdrnn = MDRNN(num_actions=environment.action_sampler.num_actions,
                   latent_size=config['latent_size'],
                   num_gaussians=config['mdrnn']['num_gaussians'],
@@ -57,14 +58,17 @@ def get_digit_from_path(path):
 
 def log_iteration_test_results(iteration_result, experiment_name):
     logger = PlanningLogger(is_logging=True)
-    logger.start_log(name=f'{experiment_name}_iterative_planning_test_results')
+    logger.start_log(name=f'{experiment_name}_main_{iteration_result.agent_name}')
 
-    title = f'Iterative_Planning_Tests_Results_{iteration_result.test_name}_trials_{iteration_result.total_trials}'
-    logger.log_iteration_max_reward(name=title,
-                                         iteration=iteration_result.iteration, max_reward=iteration_result.get_average_max_reward())
-    logger.log_iteration_avg_reward(name=title,
-                                    iteration=iteration_result.iteration, avg_reward=iteration_result.get_average_total_reward())
+    logger.log_iteration_max_reward(test_name=iteration_result.test_name, trials=iteration_result.total_trials,
+                                    iteration=iteration_result.iteration,
+                                    max_reward=iteration_result.get_average_max_reward())
+    logger.log_iteration_avg_reward(test_name=iteration_result.test_name, trials=iteration_result.total_trials,
+                                    iteration=iteration_result.iteration,
+                                    avg_reward=iteration_result.get_average_total_reward())
+    logger.log_reward_mean_std(iteration_result.test_name, iteration_result.trials_rewards, iteration_result.iteration)
     logger.end_log()
+
 
 def save_iteration_stats(iteration_results, experiment_name):
     stats_filename = f'iterative_stats_{experiment_name}'
@@ -76,6 +80,7 @@ def save_iteration_stats(iteration_results, experiment_name):
     file_content = {'iteration_results': encoded_iteration_results}
     with open(f'{stats_filepath}.pickle', 'wb') as file:
         pickle.dump(file_content, file, protocol=pickle.HIGHEST_PROTOCOL)
+
 
 def load_iteration_stats(experiment_name):
     stats_filename = f'iterative_stats_{experiment_name}'
@@ -92,44 +97,50 @@ def load_iteration_stats(experiment_name):
             return iteration_results
     return {}
 
-torch.set_num_threads(1)
-os.environ['OMP_NUM_THREADS'] = str(1)  # Inference in CPU to avoid cpu scheduling - slow parallel data generation
 
-experiment_names = ['World_Model_D']#, 'World_Model_B', 'World_Model_C', 'World_Model_D']
-for experiment_name in experiment_names:
+def make_session_name(model_name, agent_name,  iteration):
+    return f'{model_name}_{agent_name}_iteration_{iteration}'
+
+if __name__ == '__main__':
+    torch.set_num_threads(1)
+    os.environ['OMP_NUM_THREADS'] = str(1)  # Inference in CPU to avoid cpu scheduling - slow parallel data generation
+
     frame_preprocessor = Preprocessor(config['preprocessor'])
-    vae_trainer = VaeTrainer(config, frame_preprocessor)
     vae = VAE(config)
-    vae = vae_trainer.reload_model(vae)
+    vae_trainer = VaeTrainer(config, frame_preprocessor)
+    vae = vae_trainer.reload_model(vae, device='cpu')
 
-    mdrnn_models_location = 'mdrnn/checkpoints/backups'
-    files = [os.path.join(root, name) for root, dirs, files in os.walk(mdrnn_models_location) for name in files]
-    files = [file for file in files if experiment_name in file]
-    files.sort(key=lambda path: get_digit_from_path(path))
-    print(files)
+    experiment_names = ['World_Model_Iter_A']
+    for experiment_name in experiment_names:
+        mdrnn_models_location = 'mdrnn/checkpoints/backups'
+        files = [os.path.join(root, name) for root, dirs, files in os.walk(mdrnn_models_location) for name in files]
+        files = [file for file in files if experiment_name in file]
+        files.sort(key=lambda path: get_digit_from_path(path))
+        print(files)
 
-    iteration_results = load_iteration_stats(experiment_name)
-    for file in files:
-        if get_digit_from_path(file) < 6:
-            continue
+        iteration_results = {}
+        for file in files:
+            # if get_digit_from_path(file) < 6:
+            #     continue
+            print(f'current experiment {experiment_name} - file: {file}')
+            current_iteration = int(get_digit_from_path(file))
+            iteration_result = IterationResult(iteration=current_iteration)
+            mdrnn = reload_model(file)
 
-        environment = get_environment(config)
-        agent = get_planning_agent()
+            session_name = make_session_name(config["experiment_name"], config['planning']['planning_agent'], get_digit_from_path(file))
+            agent = get_planning_agent()
+            tester = get_planning_tester(config, vae, mdrnn, frame_preprocessor, agent)
+            test_name, trial_actions, trials_rewards, trial_elites, trial_max_rewards, trial_seeds = \
+                tester.run_specific_test(config['iterative_trainer']['test_scenario'], session_name=session_name)
 
-        print(f'current experiment {experiment_name} - file: {file}')
-        current_iteration = int(get_digit_from_path(file))
-        iteration_result = iteration_results[current_iteration]
-        mdrnn = reload_model(file)
-        tester = get_planning_tester(config, vae, mdrnn, frame_preprocessor, environment, agent)
-        test_name, trial_actions, trials_rewards, trial_elites, trial_max_rewards, trial_seeds = tester.run_specific_test(config['iterative_trainer']['test_scenario'])
+            iteration_result.test_name = test_name
+            iteration_result.trial_seeds = trial_seeds
+            iteration_result.total_trials = len(trial_max_rewards)
+            iteration_result.trials_rewards = trials_rewards
+            iteration_result.trials_max_rewards = trial_max_rewards
+            iteration_results[current_iteration] = (iteration_result)
+            save_iteration_stats(iteration_results, experiment_name)
+            log_iteration_test_results(iteration_result, experiment_name)
 
-        iteration_result.test_name = test_name
-        iteration_result.trial_seeds = trial_seeds
-        iteration_result.total_trials = len(trial_max_rewards)
-        iteration_result.trials_rewards = trials_rewards
-        iteration_result.trials_max_rewards = trial_max_rewards
-        iteration_results[current_iteration] = iteration_result
-        log_iteration_test_results(iteration_result, experiment_name)
-        save_iteration_stats(iteration_results, experiment_name)
 
 

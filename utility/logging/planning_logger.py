@@ -1,3 +1,4 @@
+import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 from utility.logging.base_logger import BaseLogger
 
@@ -19,13 +20,18 @@ class PlanningLogger(BaseLogger):
         self._add_text(tag=f'{test_name}/{agent}', value=settings, step=0)
 
     def log_iteration_max_reward(self, test_name, trials, iteration, max_reward):
-        title = f"{test_name}/Average Max reward  of {trials} trials"
+        title = f"{test_name}/Average Max reward  of {trials} trials per iteration"
         self._add_scalar(title, max_reward, iteration)
 
     def log_iteration_avg_reward(self, test_name, trials, iteration, avg_reward):
-        title = f"{test_name}/Average Total reward of {trials} trials"
+        title = f"{test_name}/Average Total reward of {trials} trials per iteration"
         self._add_scalar(title, avg_reward, iteration)
 
+    def log_reward_mean_std(self, test_name, trial_rewards, step=0):
+        trial_rewards = np.array(trial_rewards)
+        mean, std_dev = trial_rewards.mean(), trial_rewards.std()
+        title = f"{test_name}/Mean and stddev reward of {len(trial_rewards)} trials"
+        self._add_text(tag=title, value=f'Mean: {mean} +- {std_dev}', step=step)
 
     def start_log(self, name):
         if not self._is_logging:

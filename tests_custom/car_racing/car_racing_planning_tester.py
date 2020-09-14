@@ -26,11 +26,11 @@ class PlanningTester(BasePlanningTester):
                 # "planning_forward_right_side": (self._planning_forward_right_side, {OPTIMAL_REWARD: 66, OPTIMAL_STEPS: 100, RANDOM_REWARD: -7, TILES_TO_COMPLETE: 25, CUSTOM_SEED: 9214, PRE_ACTIONS: None}),
                 # "planning_head_to_grass_right": (self._planning_head_to_grass_right, {OPTIMAL_REWARD: 66, OPTIMAL_STEPS: 100, RANDOM_REWARD: -7, TILES_TO_COMPLETE: 25, CUSTOM_SEED: 9214, PRE_ACTIONS: None}),
                 # "planning_head_to_grass_left": (self._planning_head_to_grass_left, {OPTIMAL_REWARD: 66, OPTIMAL_STEPS: 100, RANDOM_REWARD: -7, TILES_TO_COMPLETE: 25, CUSTOM_SEED: 9214, PRE_ACTIONS: None}),
-                # "forward_planning_test": (self._planning_forward_test, {OPTIMAL_REWARD: 66, OPTIMAL_STEPS: 100, RANDOM_REWARD: -7, TILES_TO_COMPLETE: 25, CUSTOM_SEED: 9214, PRE_ACTIONS: None}),
-                # "left_turn_planning_test": (self._planning_left_turn_test, {OPTIMAL_REWARD: 23, OPTIMAL_STEPS: 60, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 10, CUSTOM_SEED: 9214, PRE_ACTIONS: None}),
-                # "right_turn_planning_test": (self._planning_right_turn_test,{OPTIMAL_REWARD: 33, OPTIMAL_STEPS: 60, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 11, CUSTOM_SEED: 2, PRE_ACTIONS: None}),
-                # "s_turn_planning_test": (self._planning_s_turn_test, {OPTIMAL_REWARD: 43, OPTIMAL_STEPS: 80, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 16, CUSTOM_SEED: 9214, PRE_ACTIONS: None}),
-                # "u_turn_planning_test": (self._planning_u_turn_test, {OPTIMAL_REWARD: 40, OPTIMAL_STEPS: 280, RANDOM_REWARD: -5, TILES_TO_COMPLETE: 15, CUSTOM_SEED: 9214, PRE_ACTIONS: None}),
+                # "planning_forward_test": (self._planning_forward_test, {OPTIMAL_REWARD: 66, OPTIMAL_STEPS: 100, RANDOM_REWARD: -7, TILES_TO_COMPLETE: 25, CUSTOM_SEED: 9214, PRE_ACTIONS: None}),
+                "planning_left_turn_test": (self._planning_left_turn_test, {OPTIMAL_REWARD: 23, OPTIMAL_STEPS: 60, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 10, CUSTOM_SEED: 9214, PRE_ACTIONS: None}),
+                # "planning_right_turn_test": (self._planning_right_turn_test,{OPTIMAL_REWARD: 33, OPTIMAL_STEPS: 60, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 11, CUSTOM_SEED: 2, PRE_ACTIONS: None}),
+                # "planning_s_turn_test": (self._planning_s_turn_test, {OPTIMAL_REWARD: 43, OPTIMAL_STEPS: 80, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 16, CUSTOM_SEED: 9214, PRE_ACTIONS: None}),
+                # "planning_u_turn_test": (self._planning_u_turn_test, {OPTIMAL_REWARD: 40, OPTIMAL_STEPS: 280, RANDOM_REWARD: -5, TILES_TO_COMPLETE: 15, CUSTOM_SEED: 9214, PRE_ACTIONS: None}),
                 # "planning_whole_track_no_right_turns_test": (self._planning_whole_track_no_right_turns_test, {OPTIMAL_REWARD: 900, OPTIMAL_STEPS: 1200, RANDOM_REWARD: -32, TILES_TO_COMPLETE: 1200, CUSTOM_SEED: 30, PRE_ACTIONS: None}),
                 "planning_whole_random_track": (self._planning_whole_random_track_test, {OPTIMAL_REWARD: 900, OPTIMAL_STEPS: 1200, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 1200, CUSTOM_SEED: None, PRE_ACTIONS: None})
                 # "planning_specific_track": (self._planning_whole_random_track_test, {OPTIMAL_REWARD: 900, OPTIMAL_STEPS: 1200, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 1200, CUSTOM_SEED: 9214, PRE_ACTIONS: None})
@@ -47,7 +47,7 @@ class PlanningTester(BasePlanningTester):
         pre_actions.extend([[0, 0.1, 0] for _ in range(30)])
 
         args[PRE_ACTIONS] = pre_actions
-        args[TEST_NAME] = 'Head to grass left planning test'
+        args[TEST_NAME] = 'planning_forward_left_side'
         args[START_TRACK] = 25
         return self._run_plan_or_replay(args=args)
 
@@ -59,7 +59,7 @@ class PlanningTester(BasePlanningTester):
         pre_actions.extend([[0, 0.1, 0] for _ in range(30)])
 
         args[PRE_ACTIONS] = pre_actions
-        args[TEST_NAME] = 'Head to grass left planning test'
+        args[TEST_NAME] = 'planning_forward_right_side'
         args[START_TRACK] = 25
         return self._run_plan_or_replay(args=args)
 
@@ -73,7 +73,7 @@ class PlanningTester(BasePlanningTester):
         pre_actions.extend([[-1, 0.0, 0] for _ in range(15)])
         pre_actions.extend([[-0.1, 0.0, 0.01] for _ in range(20)])
         args[PRE_ACTIONS] = pre_actions
-        args[TEST_NAME] = 'Head to grass left planning test'
+        args[TEST_NAME] = 'planning_head_to_grass_left'
         args[START_TRACK] = 25
         return self._run_plan_or_replay(args=args)
 
@@ -85,43 +85,42 @@ class PlanningTester(BasePlanningTester):
         pre_actions.extend([[1, 0.0, 0] for _ in range(15)])
         pre_actions.extend([[0.1, 0.0, 0.01] for _ in range(10)])
         args[PRE_ACTIONS] = pre_actions
-        args[TEST_NAME] = 'Head to grass left planning test'
+        args[TEST_NAME] = 'planning_head_to_grass_right'
         args[START_TRACK] = 25
         return self._run_plan_or_replay(args=args)
 
-
     def _planning_forward_test(self, args):
-        args[TEST_NAME] = 'Forward planning test'
+        args[TEST_NAME] = 'planning_forward_test'
         args[START_TRACK] = 25
         return self._run_plan_or_replay(args=args)
 
     def _planning_left_turn_test(self, args):
-        args[TEST_NAME] = 'Left Turn planning test'
+        args[TEST_NAME] = 'planning_left_turn_test'
         args[START_TRACK] = 14
         return self._run_plan_or_replay(args=args)
 
     def _planning_right_turn_test(self, args):
-        args[TEST_NAME] = 'Right Turn planning test'
+        args[TEST_NAME] = 'planning_right_turn_test'
         args[START_TRACK] = 222
         return self._run_plan_or_replay(args=args)
 
     def _planning_u_turn_test(self, args):
-        args[TEST_NAME] = 'U-Turn planning test'
+        args[TEST_NAME] = 'planning_u_turn_test'
         args[START_TRACK] = 103
         return self._run_plan_or_replay(args=args)
 
     def _planning_s_turn_test(self, args):
-        args[TEST_NAME] = 'S-Turn planning test'
+        args[TEST_NAME] = 'planning_s_turn_test'
         args[START_TRACK] = 250
         return self._run_plan_or_replay(args=args)
 
     def _planning_whole_track_no_right_turns_test(self, args):
-        args[TEST_NAME] = 'Whole track (No right turns) planning test'
+        args[TEST_NAME] = 'planning_whole_track_no_right_turns_test'
         args[START_TRACK] = 1
         return self._run_plan_or_replay(args=args)
 
     def _planning_whole_random_track_test(self, args):
-        args[TEST_NAME] = 'Whole random track planning test'
+        args[TEST_NAME] = 'planning_whole_random_track'
         args[START_TRACK] = 1
         return self._run_plan_or_replay(args=args)
 

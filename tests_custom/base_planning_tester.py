@@ -148,7 +148,8 @@ class BasePlanningTester(BaseTester):
                 trial_seeds.append(seed)
                 logger.log_trial_rewards(test_name=args[TEST_NAME], trial_idx=i, total_reward=total_reward, max_reward=max_reward)
                 logger.log_custom_trial_results(test_name=args[TEST_NAME], trial_idx=i, results=custom_message)
-
+        logger.log_reward_mean_std(args[TEST_NAME], trial_rewards)
+        logger.end_log()
         return trial_actions, trial_rewards, trial_elites, trial_max_rewards, trial_seeds
 
     def _run_trial_thread(self, args):
@@ -266,7 +267,7 @@ class BasePlanningTester(BaseTester):
         config_name = self.config['experiment_name']
         agent_name = self.config['planning']['planning_agent']
         date = datetime.now().strftime("%Y_%m_%d_%H_%M")
-        return f'{custom_name if custom_name else f"{config_name}_{date}_{agent_name}"}'
+        return custom_name if custom_name else f'{config_name}_{date}_{agent_name}'
 
     def _get_threads(self):
         fixed_cores = self.config['test_suite']['fixed_cores']
