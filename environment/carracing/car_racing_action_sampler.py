@@ -1,7 +1,6 @@
 import random
-
 import numpy as np
-
+import torch
 from environment.actions.base_action_sampler import BaseActionSampler, brownian_sample
 
 
@@ -16,14 +15,26 @@ class CarRacingActionSampler(BaseActionSampler):
     def sample(self, previous_action=None):  # Sampling: [ steer, gas, brake ] = [ [-1, +1] , [0, 1], [0, 1] ]
         return self._continous_sample(previous_action) if not self.is_discretize_sampling else self.discrete_sample()
 
+    def sample_logits(self):
+        return [torch.randn(1, requires_grad=True),
+                torch.randn(1, requires_grad=True),
+                torch.scalar_tensor(0, requires_grad=False)]
+
+    def convert_logits_to_action(self, logits):
+        action = logits.clone()
+        speed = torch.tanh(action[1])
+        gas = speed if speed > 0 else 0
+        brake = abs(speed) if speed < 0 else 0
+        action[0] = torch.tanh(action[0])
+        action[1] = gas
+        action[2] = brake
+        return action
+
     def _continous_sample(self, previous_action=None):
         steer = np.random.uniform(low=-1, high=1)
 
         speed = np.random.uniform(low=self.max_brake, high=self.max_gas) if previous_action is None else \
                 random.uniform(self.max_brake, self.max_gas)
-            #     np.random.choice([max(previous_action[1] - self.gas_delta, -1),
-            #     previous_action[1],
-            #     min(previous_action[1] + self.gas_delta, 1)])
 
         # Brake: negative sign of gas to avoid simultaneous brake/gas driving
         gas = speed if speed > 0 else 0
