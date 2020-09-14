@@ -6,7 +6,7 @@
 
 import torch
 from planning.interfaces.abstract_grad_hill_climb_simulation import AbstractGradientHillClimbing
-
+from utility.logging.single_step_logger import SingleStepLogger
 
 
 class SGDHC(AbstractGradientHillClimbing):
@@ -24,11 +24,17 @@ class SGDHC(AbstractGradientHillClimbing):
 
         self.optimizer = torch.optim.Adam(self.logit_sequence, lr=self.learning_rate)
 
+        logger = SingleStepLogger(is_logging=True)
+        logger.start_log(f'World_Model_RandomNormal_SGDHC_h{self.horizon}_g{self.max_steps}_lr{self.learning_rate}')
+
         for step in range(self.max_steps):
             plan = [environment.convert_logits_to_action(logit) for logit in self.logit_sequence]
             total_reward = self._evaluate_plan(plan, environment)
             self._gradient_step(total_reward)
             print(total_reward, self.logit_sequence)
+            logger.log_acc_reward_single_planning_step(test_name='planning_head_to_grass_right', step=step, acc_reward=total_reward.item(), actions=[self._convert_action_to_value(action) for action in plan])
+
+        logger.end_log()
 
         best_action = self._convert_action_to_value(environment.convert_logits_to_action(self.logit_sequence.action_sequence[0]))
         return best_action, None

@@ -24,10 +24,10 @@ class PlanningTester(BasePlanningTester):
         return {  # (test_func, args)
                 # "planning_forward_left_side": (self._planning_forward_left_side, {OPTIMAL_REWARD: 66, OPTIMAL_STEPS: 100, RANDOM_REWARD: -7, TILES_TO_COMPLETE: 25, CUSTOM_SEED: 9214, PRE_ACTIONS: None}),
                 # "planning_forward_right_side": (self._planning_forward_right_side, {OPTIMAL_REWARD: 66, OPTIMAL_STEPS: 100, RANDOM_REWARD: -7, TILES_TO_COMPLETE: 25, CUSTOM_SEED: 9214, PRE_ACTIONS: None}),
-                # "planning_head_to_grass_right": (self._planning_head_to_grass_right, {OPTIMAL_REWARD: 66, OPTIMAL_STEPS: 100, RANDOM_REWARD: -7, TILES_TO_COMPLETE: 25, CUSTOM_SEED: 9214, PRE_ACTIONS: None}),
+                "planning_head_to_grass_right": (self._planning_head_to_grass_right, {OPTIMAL_REWARD: 66, OPTIMAL_STEPS: 100, RANDOM_REWARD: -7, TILES_TO_COMPLETE: 25, CUSTOM_SEED: 9214, PRE_ACTIONS: None}),
                 # "planning_head_to_grass_left": (self._planning_head_to_grass_left, {OPTIMAL_REWARD: 66, OPTIMAL_STEPS: 100, RANDOM_REWARD: -7, TILES_TO_COMPLETE: 25, CUSTOM_SEED: 9214, PRE_ACTIONS: None}),
                 # "planning_forward_test": (self._planning_forward_test, {OPTIMAL_REWARD: 66, OPTIMAL_STEPS: 100, RANDOM_REWARD: -7, TILES_TO_COMPLETE: 25, CUSTOM_SEED: 9214, PRE_ACTIONS: None}),
-                "planning_left_turn_test": (self._planning_left_turn_test, {OPTIMAL_REWARD: 23, OPTIMAL_STEPS: 60, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 10, CUSTOM_SEED: 9214, PRE_ACTIONS: None}),
+                # "planning_left_turn_test": (self._planning_left_turn_test, {OPTIMAL_REWARD: 23, OPTIMAL_STEPS: 60, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 10, CUSTOM_SEED: 9214, PRE_ACTIONS: None}),
                 # "planning_right_turn_test": (self._planning_right_turn_test,{OPTIMAL_REWARD: 33, OPTIMAL_STEPS: 60, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 11, CUSTOM_SEED: 2, PRE_ACTIONS: None}),
                 # "planning_s_turn_test": (self._planning_s_turn_test, {OPTIMAL_REWARD: 43, OPTIMAL_STEPS: 80, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 16, CUSTOM_SEED: 9214, PRE_ACTIONS: None}),
                 # "planning_u_turn_test": (self._planning_u_turn_test, {OPTIMAL_REWARD: 40, OPTIMAL_STEPS: 280, RANDOM_REWARD: -5, TILES_TO_COMPLETE: 15, CUSTOM_SEED: 9214, PRE_ACTIONS: None}),
