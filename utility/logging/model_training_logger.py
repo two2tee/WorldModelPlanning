@@ -174,16 +174,12 @@ class ModelTrainingLogger(BaseLogger):
             return
         self._test_writer = SummaryWriter(log_dir=f'{self.log_dir_root}/test/{name}')
         self._train_writer = SummaryWriter(log_dir=f'{self.log_dir_root}/train/{name}')
-        if not is_vae:
-            self._planning_test_writer = SummaryWriter(log_dir=f'{self.log_dir_root}/planning_test/{name}')
 
     def commit_log(self):
         if not self._is_logging:
             return
         self._train_writer.flush()
         self._test_writer.flush()
-        if self._planning_test_writer is not None:
-            self._planning_test_writer.flush()
 
     def end_log(self):
         if not self._is_logging:
@@ -191,6 +187,3 @@ class ModelTrainingLogger(BaseLogger):
         self.commit_log()
         self._train_writer.close()
         self._test_writer.close()
-        self._planning_test_writer.close()
-
-
