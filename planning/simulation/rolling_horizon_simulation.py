@@ -10,6 +10,7 @@ from planning.interfaces.individual import Individual
 from tuning.evolution_handler import EvolutionHandler
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from planning.interfaces.abstract_rolling_horizon_simulation import AbstractRollingHorizon
+from utility.logging.single_step_logger import SingleStepLogger
 
 
 class RHEA(AbstractRollingHorizon):
@@ -39,10 +40,15 @@ class RHEA(AbstractRollingHorizon):
         self.current_elite = None
         self.population = self.initialize_population(environment, self.population_size)
 
+        # logger = SingleStepLogger(is_logging=True) # TODO REMOVE
+        # logger.start_log(f'World_Model_RandomNormal_RHEA_h{self.horizon}_g{self.max_generations}')
         for generation in range(self.max_generations):
             self.evaluate_population(self.population, environment)
             self.current_elite = self._elitist_selection(self.population)
             self.population = self.evolve_population(environment, generation, self.population)
+
+            # logger.log_acc_reward_single_planning_step(test_name='planning_head_to_grass_right', step=generation, acc_reward=self.current_elite.fitness, actions=self.current_elite.action_sequence)
+        # logger.end_log()
 
         self.evaluate_population(self.population, environment)
         self.current_elite = self._elitist_selection(self.population)
