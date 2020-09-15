@@ -126,7 +126,7 @@ class IterativeTrainer:
         if self.is_replay_buffer:
             rollout_counter.value = 1 if rollout_counter.value > self.max_buffer_size else rollout_counter.value + 1
         else:
-            rollout_counter.value = rollout_counter.value + 1
+            rollout_counter.value = 1 if rollout_counter.value > self.num_rollouts else rollout_counter.value + 1
 
     def _get_rollout_file_count(self):
         return len([name for root, dirs, files in os.walk(self.data_dir) for name in files])
