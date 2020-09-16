@@ -6,12 +6,14 @@
 
 import copy
 import torch
+import numpy as np
 from concurrent.futures import as_completed
 from planning.interfaces.individual import Individual
 from tuning.evolution_handler import EvolutionHandler
 from concurrent.futures.thread import ThreadPoolExecutor
 from utility.logging.single_step_logger import SingleStepLogger
 from planning.interfaces.abstract_hill_climb_simulation import AbstractRandomMutationHillClimbing
+from tqdm import tqdm
 
 
 class RMHC(AbstractRandomMutationHillClimbing):
@@ -38,16 +40,35 @@ class RMHC(AbstractRandomMutationHillClimbing):
         self._append_elite(self.current_elite)
 
         # logger = SingleStepLogger(is_logging=True) # TODO REMOVE
-        # logger.start_log(f'World_Model_RandomNormal_RMHC_h{self.horizon}_g{self.max_generations}')
+        # logger.start_log(f'World_Model_iter_A_20_RMHC_averaged_all_h{self.horizon}_g{self.max_generations}')
         for generation in range(self.max_generations):
-            mutated_individual = self._mutate(environment, self.current_elite, generation)
-            self.current_elite = self._select_best_individual(self.current_elite, mutated_individual, environment)
+            self._step_generation(generation, environment)
 
-            # logger.log_acc_reward_single_planning_step(test_name='planning_head_to_grass_right', step=generation, acc_reward=self.current_elite.fitness, actions=self.current_elite.action_sequence)
+        # self._single_step_testing(environment, logger)
         # logger.end_log()
 
         best_action = self.current_elite.action_sequence[0]
         return best_action, self.elite_history
+
+    def _step_generation(self, generation, environment):
+        mutated_individual = self._mutate(environment, self.current_elite, generation) # copy.deepcopy(self.current_elite) #
+        self.current_elite = self._select_best_individual(self.current_elite, mutated_individual, environment)
+
+    def _single_step_testing(self, environment, logger):
+        for generation, elite in tqdm(enumerate(self.elite_history)):
+            elite_copy = Individual(action_sequence=elite[2], age=generation, fitness=elite[0])
+            rewards = []
+            for _ in range(100):
+                elite_copy.fitness = 0
+                self._evaluate_individual(elite_copy, environment)
+                rewards.append(elite_copy.fitness)
+            rewards = np.array(rewards)
+            elite_copy.fitness = round(rewards.mean(), 3)
+            elite_copy.standard_deviation = round(rewards.std(), 4)
+
+            logger.log_acc_reward_single_planning_step(test_name='planning_head_to_grass_right', step=generation,
+                                                   acc_reward=elite_copy.fitness, std=elite_copy.standard_deviation,
+                                                   actions=[])
 
     def _initialize_individual(self, environment):
         if self.is_shift_buffer and self.current_elite is not None:
