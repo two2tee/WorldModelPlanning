@@ -8,10 +8,10 @@ class SingleStepLogger(BaseLogger):
         super().__init__(is_logging)
         self.logger = None
 
-    def log_acc_reward_single_planning_step(self, test_name, step, acc_reward, actions):
+    def log_acc_reward_single_planning_step(self, test_name, step, acc_reward, actions, std=None):
         title = f'Single_Step_test/{test_name}'
         self._add_scalar(title, acc_reward, step, self.logger)
-        self._add_text(title, f'Horizon: {len(actions)}, total sim reward {round(acc_reward,3)} actions: {actions}',
+        self._add_text(title, f'mean {round(acc_reward,5)} +- {std},  actions: {actions}',
                        step=step, logger=self.logger)
 
     def start_log(self, name):

@@ -9,6 +9,7 @@ class Individual:
         self.action_sequence = action_sequence  # chromosome
         self.fitness = fitness
         self.age = age
+        self.standard_deviation = 0
 
     def __str__(self):
         return f'Age: {self.age} | Fitness: {self.fitness} | Sequence: {self.action_sequence}'

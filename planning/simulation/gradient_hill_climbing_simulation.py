@@ -31,12 +31,13 @@ class SGDHC(AbstractGradientHillClimbing):
             plan = [environment.convert_logits_to_action(logit) for logit in self.logit_sequence]
             total_reward = self._evaluate_plan(plan, environment)
             self._gradient_step(total_reward)
-            print(total_reward, self.logit_sequence)
+            # print(total_reward, self.logit_sequence)
             # logger.log_acc_reward_single_planning_step(test_name='planning_head_to_grass_right', step=step, acc_reward=total_reward.item(), actions=[self._convert_action_to_value(action) for action in plan])
         # logger.end_log()
 
-        best_action = self._convert_action_to_value(environment.convert_logits_to_action(self.logit_sequence.action_sequence[0]))
+        best_action = self._convert_action_to_value(environment.convert_logits_to_action(self.logit_sequence[0]))
         return best_action, None
+
 
     def _initialize_sequence(self, environment):
         if self.is_shift_buffer and self.logit_sequence is not None:
