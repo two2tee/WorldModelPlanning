@@ -3,7 +3,6 @@ from tqdm import tqdm
 from utility.rollout_handling.base_rollout_generator import BaseRolloutGenerator
 
 
-
 class RolloutGenerator(BaseRolloutGenerator):
     def __init__(self, config, data_output_dir):
         super().__init__(config,  data_output_dir)
@@ -32,7 +31,6 @@ class RolloutGenerator(BaseRolloutGenerator):
                 environment.reset()
         environment.close()
         return actions_rollout, states_rollout, reward_rollout, is_done_rollout
-
 
     def _render(self, environment, obs, action, reward, done):
         environment.render()

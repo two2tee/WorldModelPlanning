@@ -54,7 +54,7 @@ class SimulatedEnvironment:
         return self._reset_states()
 
     def _step_mdrnn(self, action, latent_z, hidden_states):
-        action = action if type(action) == torch.Tensor else torch.tensor(action)
+        action = action if type(action) == torch.Tensor else torch.tensor(action, dtype=torch.float32)
         action = action.unsqueeze(0).unsqueeze(0)
         latent_z = latent_z.unsqueeze(0)
         means, standard_deviations, log_mixture_weights, rewards, dones, next_hidden_states = self.mdrnn.forward(action, latent_z, hidden_states)

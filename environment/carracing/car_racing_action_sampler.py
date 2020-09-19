@@ -33,11 +33,9 @@ class CarRacingActionSampler(BaseActionSampler):
     def _continous_sample(self, previous_action=None):
         steer = np.random.uniform(low=-1, high=1)
 
-        speed = np.random.uniform(low=self.max_brake, high=self.max_gas) if previous_action is None else \
-                random.uniform(self.max_brake, self.max_gas)
-
-        # Brake: negative sign of gas to avoid simultaneous brake/gas driving
+        speed = random.uniform(self.max_brake, self.max_gas)
         gas = speed if speed > 0 else 0
+        # Brake: negative sign of gas to avoid simultaneous brake/gas driving
         brake = abs(speed) if speed < 0 else 0
         return [steer, gas, brake]
 
@@ -63,9 +61,9 @@ class CarRacingActionSampler(BaseActionSampler):
 
     def discrete_action_space(self, action=None):
         actions = set()
-        steer_steps = np.arange(start=-1.0, stop=1.0, step=self.steer_delta) if action is None else [max(action[0] - self.steer_delta, -1), action[0], min(action[0] + self.steer_delta, 1)]
-        gas_steps = np.arange(start=-1.0, stop=1.0, step=self.gas_delta) if action is None else [max(action[1] - self.gas_delta, -1), action[1], min(action[1] + self.gas_delta, 1)]
-        steer_steps, gas_steps = [round(e, 1) for e in steer_steps], [round(e, 1) for e in gas_steps]  # Remove decimal precision
+        steer_steps = np.arange(start=-1.0, stop=1.0, step=self.steer_delta) #if action is None else [max(action[0] - self.steer_delta, -1), action[0], min(action[0] + self.steer_delta, 1)]
+        gas_steps = np.arange(start=-1.0, stop=1.0, step=self.gas_delta) # if action is None else [max(action[1] - self.gas_delta, -1), action[1], min(action[1] + self.gas_delta, 1)]
+        #steer_steps, gas_steps = [round(e, 1) for e in steer_steps], [round(e, 1) for e in gas_steps]  # Remove decimal precision
 
         for steer in steer_steps:
             for gas in gas_steps:

@@ -23,7 +23,7 @@ class BaseRolloutGenerator:
         self.action_sampler = get_action_sampler(self.config)
         self.rollouts = config["data_generator"]['rollouts']
         self.sequence_length = config["data_generator"]['sequence_length']
-        self.threads = multiprocessing.cpu_count()
+        self.threads = self._get_threads()
         self.render_mode = False
         self.img_width = 64
         self.img_height = 64
@@ -42,18 +42,10 @@ class BaseRolloutGenerator:
         print(f'Done - {self.rollouts} rollout samples for {self.config["game"]} saved in {self.data_dir}')
 
     def _run_rollout_thread(self, rollouts, thread):
-        i = 1
         environment = get_environment(self.config)
-        while i < rollouts + 1:
+        for i in range(1, rollouts+1):
             actions_rollout, states_rollout, reward_rollout, is_done_rollout = self._standard_rollout(environment, thread, i, rollouts)
-
-            if len(actions_rollout) < self.sequence_length:  # ensure rollouts contains enough data for sequence
-                print(f'thread: {thread} - Bad rollout with {len(actions_rollout)} actions - retry...')
-                i -= 1
-            else:
-                self._save_rollout(thread, i, states_rollout, reward_rollout, actions_rollout, is_done_rollout)
-            i += 1
-
+            self._save_rollout(thread, i, states_rollout, reward_rollout, actions_rollout, is_done_rollout)
         return thread
 
     def _standard_rollout(self, environment, thread, current_rollout, rollouts):
@@ -79,3 +71,7 @@ class BaseRolloutGenerator:
                             rewards=np.array(reward_rollout),
                             actions=np.array(actions_rollout),
                             terminals=np.array(is_done_rollout))
+
+    def _get_threads(self):
+        fixed_cores = self.config["data_generator"]["fixed_cores"]
+        return fixed_cores if fixed_cores else multiprocessing.cpu_count()

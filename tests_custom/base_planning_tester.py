@@ -182,7 +182,7 @@ class BasePlanningTester(BaseTester):
         return action, step_elites
 
     def _step(self, action, hidden_state, environment):
-        current_state, reward, is_done, _ = environment.step(action)
+        current_state, reward, is_done, _ = environment.step(action, ignore_is_done=True)
         latent_state, _ = self._encode_state(current_state)
         latent_state, simulated_reward, simulated_is_done, hidden_state = self.simulated_environment.step(action,
                                                                                                           hidden_state,

@@ -98,10 +98,6 @@ class SimulatedPlanningController:
             total_steps, total_reward, total_simulated_reward = 0, 0, 0
 
             current_state = environment.reset(seed=9214)
-            # self._set_car_position(103, environment)
-            # for a in [[0,0.5,0] for i in range(40)]:
-            #     current_state, reward, is_done, _ = environment.step(a)
-
             latent_state, simulated_reward, hidden_state = self._synchronize_simulated_environment(current_state, self.action)
 
             # while not is_done:
@@ -117,15 +113,13 @@ class SimulatedPlanningController:
                     self.simulated_environment.render()
                     total_reward += simulated_reward
                     total_simulated_reward = total_reward
-                    # print(round(simulated_reward, 2), self.action)
                 else:
-                    current_state, reward, is_done, _ = environment.step(self.action)
+                    current_state, reward, is_done, _ = environment.step(self.action, ignore_is_done=True)
                     latent_state, simulated_reward, hidden_state = self._synchronize_simulated_environment(current_state, self.action, hidden_state)
                     print(reward, round(simulated_reward, 2), self.action)
                     total_reward += reward
                     total_simulated_reward += simulated_reward
                     environment.render()
-                    self.simulated_environment.render()
 
                 total_steps += 1
                 # print(f"Reward: {round(total_reward)} | Sim. reward: {round(total_simulated_reward)} | {total_steps} steps")

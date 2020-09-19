@@ -11,6 +11,8 @@ class CarRacingEnvironment(BaseEnvironment):
         self.seed = None
         self.is_skip_zoom = self.config['real_environment']['car_racing']['skip_zoom']
         self.is_random_inital_car_position = self.config['real_environment']['car_racing']['random_intial_car_pos']
+        self.is_standard_reward = self.config['real_environment']['car_racing']['standardize_reward']
+
 
     def reset(self, seed=None):
         super(CarRacingEnvironment, self).reset()
@@ -20,7 +22,7 @@ class CarRacingEnvironment(BaseEnvironment):
         self.seed = seed if seed else random.randint(0, 2 ** 31 - 1)
         self.environment.seed(self.seed)
         state = self.environment.reset()
-        state = self._randomize_car_pos if self.is_random_inital_car_position else state
+        state = self._randomize_car_pos() if self.is_random_inital_car_position else state
         state = self._skip_zoom() if self.is_skip_zoom else state
         return state
 
@@ -35,6 +37,7 @@ class CarRacingEnvironment(BaseEnvironment):
 
     def step(self, action, ignore_is_done=False):
         state, reward, is_done, info = super().step(action, ignore_is_done)
+        reward = self._standardize_reward(reward) if self.is_standard_reward else reward
         return state, self._standardize_reward(reward), is_done, info
 
     def _standardize_reward(self, reward):

@@ -1,3 +1,4 @@
+import numpy as np
 """ Node representation for MCTS """
 #  Copyright (c) 2020, - All Rights Reserved
 #  This file is part of the Evolutionary Planning on a Learned World Model thesis.
@@ -15,3 +16,4 @@ class Node:
 
     def is_fully_expanded(self):
         return len(self.actions) <= 0
+

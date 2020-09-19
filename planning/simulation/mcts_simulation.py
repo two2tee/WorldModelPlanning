@@ -25,7 +25,7 @@ class MCTS(AbstractTreeSearch):
         self.hidden = None
 
     def search(self, environment, latent, hidden):
-        action = [0, 0, 0] if self.root is None else self.root.action
+        action = [0., 0., 0.] if self.root is None else self.root.action
         self.root = Node(action=action, actions=environment.discrete_action_space(action)) if self.root is None else self.root  # Reuse tree
 
         for _ in range(self.max_rollouts):

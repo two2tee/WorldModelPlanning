@@ -1,5 +1,5 @@
 from environment.carracing.car_racing_environment import CarRacingEnvironment
-# from environment.vizdoom.vizdoom_environment import VizdoomEnvironment
+from environment.vizdoom.vizdoom_environment import VizdoomEnvironment
 
 
 def get_environment(config):
@@ -7,5 +7,5 @@ def get_environment(config):
         return CarRacingEnvironment(config)
     if config['game'] == 'vizdoom-v0':
         pass
-        # return VizdoomEnvironment(config)
+        return VizdoomEnvironment(config)
     raise Exception(f'No implementation of action sampler was found for game: {config["game"]}')

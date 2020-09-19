@@ -81,7 +81,7 @@ class _MDRNNRolloutDataset(torch.utils.data.Dataset):
             data = {k: np.copy(v) for k, v in data.items()}
         return self._get_data(data)
 
-    def _get_data(self, data, seq_index=0):
+    def _get_data(self, data):
         pass
 
     def _data_per_sequence(self, data_length):
@@ -117,14 +117,14 @@ class RolloutSequenceDataset(_MDRNNRolloutDataset):
         super().__init__(root, transform, buffer_size, is_train, is_same_testdata, file_ratio, max_size, is_random_sampling)
         self._seq_len = seq_len
 
-    def _get_data(self, data, seq_index=0):
-        obs_data = data['observations'][seq_index:seq_index + self._seq_len + 1]
+    def _get_data(self, data):
+        obs_data = data['observations'][:self._seq_len + 1] if self._seq_len else data['observations'][:]
         obs_data = self._transform(obs_data.astype(np.float32))
-        obs, next_obs = obs_data[:-1], obs_data[1:]  # TEACHER FORCING
-        action = data['actions'][seq_index+1:seq_index + self._seq_len + 1]
+        obs, next_obs = obs_data[:-1], obs_data[1:]
+        action = data['actions'][:self._seq_len + 1] if self._seq_len else data['actions'][:]
         action = action.astype(np.float32)
-        reward, terminal = [data[key][seq_index+1:seq_index + self._seq_len + 1].astype(np.float32)
-                            for key in ('rewards', 'terminals')]
+        reward, terminal = [data[key][:self._seq_len + 1].astype(np.float32) for key in ('rewards', 'terminals')] if self._seq_len else \
+                           [data[key][:].astype(np.float32) for key in ('rewards', 'terminals')]
 
         return obs, action, reward, terminal, next_obs  # data_random_car format
 
