@@ -165,7 +165,7 @@
         "iterative_data_dir": "data_iterative",
         "sequence_length": 500,
         "num_rollouts": 1000,
-        "num_iterations": 10,
+        "num_iterations": 20,
         "max_epochs": 10,
         "test_scenario": "planning_whole_random_track",
         "fixed_cpu_cores": null,
