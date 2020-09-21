@@ -111,7 +111,7 @@ if __name__ == '__main__':
     vae = vae_trainer.reload_model(vae, device='cpu')
     agent = get_planning_agent()
 
-    experiment_names = ['World_Model_Iter_B']
+    experiment_names = ['World_Model_Iter_A']
     for experiment_name in experiment_names:
         mdrnn_models_location = 'mdrnn/checkpoints/backups'
         files = [os.path.join(root, name) for root, dirs, files in os.walk(mdrnn_models_location) for name in files]

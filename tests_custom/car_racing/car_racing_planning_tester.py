@@ -192,7 +192,7 @@ class PlanningTester(BasePlanningTester):
             #     print('\n-- forward --')
             #     self._simulate_dream(forward, current_state, hidden_state)
 
-            if negative_counter == max_negative_count:
+            if negative_counter == max_negative_count or total_reward > 900:
                 break
 
             current_state, reward, is_done, simulated_reward, simulated_is_done, latent_state, hidden_state = \
