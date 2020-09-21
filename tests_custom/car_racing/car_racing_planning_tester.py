@@ -200,7 +200,7 @@ class PlanningTester(BasePlanningTester):
 
             negative_counter = 0 if reward > 0 else negative_counter + 1
             action_history.append(action)
-            total_reward += reward
+            total_reward = environment.get_current_reward()
             steps_ran += 1
             elapsed_time = time.time() - start_time
             self._update_trial_results(trial_results_dto, reward, total_reward, steps_ran)

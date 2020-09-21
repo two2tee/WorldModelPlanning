@@ -267,7 +267,7 @@ class BasePlanningTester(BaseTester):
         config_name = self.config['experiment_name']
         agent_name = self.config['planning']['planning_agent']
         date = datetime.now().strftime("%Y_%m_%d_%H_%M")
-        return custom_name if custom_name else f'{config_name}_{date}_{agent_name}'
+        return custom_name if custom_name else f'{config_name}_{date}_{agent_name}_h{self.planning_agent.horizon}_g{self.planning_agent.max_generations}_sb{self.planning_agent.is_shift_buffer}'
 
     def _get_threads(self):
         fixed_cores = self.config['test_suite']['fixed_cores']

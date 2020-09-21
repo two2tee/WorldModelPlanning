@@ -36,3 +36,6 @@ class BaseEnvironment:
 
     def close(self):
         self.environment.close()
+
+    def get_current_reward(self):
+        return self.environment.env.reward
