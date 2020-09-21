@@ -99,7 +99,7 @@ def load_iteration_stats(experiment_name):
 
 
 def make_session_name(model_name, agent_name,  iteration):
-    return f'{model_name}_{agent_name}_iteration_{iteration}'
+    return f'{model_name}_{agent_name}_iteration_{iteration}_h{agent.horizon}_g{agent.max_generations}_sb{agent.is_shift_buffer}'
 
 if __name__ == '__main__':
     torch.set_num_threads(1)
@@ -128,7 +128,7 @@ if __name__ == '__main__':
             iteration_result = IterationResult(iteration=current_iteration)
             mdrnn = reload_model(file)
 
-            session_name = make_session_name(config["experiment_name"], config['planning']['planning_agent'], get_digit_from_path(file))
+            session_name = make_session_name(config["experiment_name"], config['planning']['planning_agent'], get_digit_from_path(file), agent)
             tester = get_planning_tester(config, vae, mdrnn, frame_preprocessor, agent)
             test_name, trial_actions, trials_rewards, trial_elites, trial_max_rewards, trial_seeds = \
                 tester.run_specific_test(config['iterative_trainer']['test_scenario'], session_name=session_name)

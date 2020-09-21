@@ -277,5 +277,5 @@ class IterativeTrainer:
         os.environ['OMP_NUM_THREADS'] = str(threads)  # Inference in CPU to avoid cpu scheduling - slow parallel data generation
 
     def _make_session_name(self, model_name, agent_name,  iteration):
-        return f'{model_name}_{agent_name}_iteration_{iteration}'
+        return f'{model_name}_{agent_name}_iteration_{iteration}_h{self.planning_agent.horizon}_g{self.planning_agent.max_generations}_sb{self.planning_agent.is_shift_buffer}'
 
