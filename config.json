@@ -30,7 +30,7 @@
         "is_run_model_tests": false,
         "is_run_planning_tests":  true,
         "is_reload_planning_session": false,
-        "trials": 100,
+        "trials": 30,
         "is_multithread_tests": false,
         "is_multithread_trials": true,
         "fixed_cores": null,
