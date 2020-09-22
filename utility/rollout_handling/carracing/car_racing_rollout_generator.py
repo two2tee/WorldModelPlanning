@@ -33,7 +33,7 @@ class RolloutGenerator(BaseRolloutGenerator):
                 #     break
             environment.close()
 
-            is_sequence_ok = len(actions_rollout) < self.sequence_length
+            is_sequence_ok = len(actions_rollout) >= self.sequence_length
             if not is_sequence_ok:  # ensure rollouts contains enough data for sequence
                 actions_rollout, states_rollout, reward_rollout, is_done_rollout = [], [], [], []
                 print(f'thread: {thread} - Bad rollout with {len(actions_rollout)} actions - retry...')
