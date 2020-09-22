@@ -121,9 +121,9 @@ class RolloutSequenceDataset(_MDRNNRolloutDataset):
         obs_data = data['observations'][:self._seq_len + 1] if self._seq_len else data['observations'][:]
         obs_data = self._transform(obs_data.astype(np.float32))
         obs, next_obs = obs_data[:-1], obs_data[1:]
-        action = data['actions'][:self._seq_len + 1] if self._seq_len else data['actions'][:]
+        action = data['actions'][:self._seq_len] if self._seq_len else data['actions'][:]
         action = action.astype(np.float32)
-        reward, terminal = [data[key][:self._seq_len + 1].astype(np.float32) for key in ('rewards', 'terminals')] if self._seq_len else \
+        reward, terminal = [data[key][:self._seq_len].astype(np.float32) for key in ('rewards', 'terminals')] if self._seq_len else \
                            [data[key][:].astype(np.float32) for key in ('rewards', 'terminals')]
 
         return obs, action, reward, terminal, next_obs  # data_random_car format
