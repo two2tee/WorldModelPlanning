@@ -6,6 +6,6 @@ def get_environment(config):
     if config['game'] == 'CarRacing-v0':
         return CarRacingEnvironment(config)
     if config['game'] == 'vizdoom-v0':
-        pass
         # return VizdoomEnvironment(config)
+        pass
     raise Exception(f'No implementation of action sampler was found for game: {config["game"]}')
