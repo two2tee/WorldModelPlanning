@@ -36,7 +36,7 @@
         "fixed_cores": null,
         "planning_test_log_dir": "planning_test_results",
         "planning_session_to_load": "CarRacing-v0_RMHC_iterative_6_World_Model_Iter_B_planning_session_2020-09-16-00.00_total_session_best_reward_822.6",
-        "is_logging": false,
+        "is_logging": true,
         "car_racing": {
             "max_negative_count": 150
         }
