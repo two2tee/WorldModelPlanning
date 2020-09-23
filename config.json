@@ -141,7 +141,7 @@
         "learning_rate": 0.001,
         "gradient_clip": 1.0,
         "sequence_length": 500,
-        "batch_size": 32,
+        "batch_size": 25,
         "train_buffer_size": 30,
         "test_buffer_size": 10,
         "train_test_files_ratio": 0.8,
