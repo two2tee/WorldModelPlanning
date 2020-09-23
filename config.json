@@ -1,13 +1,13 @@
 {
     "game": "CarRacing-v0",
-    "experiment_name": "World_Model_RandomRaw",
+    "experiment_name": "iterative_World_Model_Iter_A",
     "forced_vae": "World_Model_Random",
     "latent_size": 64,
     "num_reconstructions": 64,
     "is_generate_data": false,
     "is_train_vae": false,
-    "is_train_mdrnn": true,
-    "is_iterative_train_mdrnn": false,
+    "is_train_mdrnn": false,
+    "is_iterative_train_mdrnn": true,
     "is_ntbea_param_tune": false,
     "is_play": false,
     "is_dream_play": false,
@@ -32,7 +32,7 @@
         "is_reload_planning_session": false,
         "trials": 30,
         "is_multithread_tests": false,
-        "is_multithread_trials": false,
+        "is_multithread_trials": true,
         "fixed_cores": null,
         "planning_test_log_dir": "planning_test_results",
         "planning_session_to_load": "CarRacing-v0_RMHC_iterative_6_World_Model_Iter_B_planning_session_2020-09-16-00.00_total_session_best_reward_822.6",
@@ -171,7 +171,7 @@
         "fixed_cpu_cores": null,
         "max_test_threads": 3,
         "replay_buffer": {
-            "is_replay_buffer": false,
+            "is_replay_buffer": true,
             "max_buffer_size": 20000
         }
     },
@@ -235,8 +235,8 @@
         },
         "random_mutation_hill_climb": {
             "horizon": 20,
-            "max_generations": 20,
-            "is_shift_buffer": false,
+            "max_generations": 10,
+            "is_shift_buffer": true,
             "is_rollout": false,
             "max_rollouts": 1,
             "rollout_length": 20,

@@ -268,7 +268,7 @@ class PlanningTester(BasePlanningTester):
         if start_track == 1:
             return
         environment.environment.env.car = Car(environment.environment.env.world,
-                                                   *environment.environment.env.track[start_track][1:4])
+                                              *environment.environment.env.track[start_track][1:4])
 
     def _reward_diff_percentage(self, actual, control):
         return round((actual-control) / 100) if abs(actual) == 0 else round((actual-control) / abs(actual) * 100)
