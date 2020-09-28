@@ -39,6 +39,12 @@ class CarRacingActionSampler(BaseActionSampler):
         brake = abs(speed) if speed < 0 else 0
         return [steer, gas, brake]
 
+    def _standard_sample(self):
+        steer = np.random.uniform(low=-1, high=1)
+        gas = np.random.uniform(low=0, high=1)
+        brake = np.random.uniform(low=0, high=1)
+        return [steer, gas, brake]
+
     def discrete_sample(self):
         steer_steps = [round(e, 1) for e in np.arange(start=-1.0, stop=1.0, step=0.1)]
         gas_steps = [round(e, 1) for e in np.arange(start=-1.0, stop=1.0, step=0.2)]

@@ -144,7 +144,7 @@ class MDRNNTrainer:
             train(epoch)
             test_losses = test(epoch)
             self.scheduler.step(test_losses['average_loss'])
-            if self.is_iterative:
+            if not self.is_iterative:
                 self.earlystopping.step(test_losses['average_loss'])
 
             is_best = not current_best or test_losses['average_loss'] < current_best

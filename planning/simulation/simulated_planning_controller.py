@@ -113,6 +113,7 @@ class SimulatedPlanningController:
                     self.simulated_environment.render()
                     total_reward += simulated_reward
                     total_simulated_reward = total_reward
+                    print(simulated_reward, self.action)
                 else:
                     current_state, reward, is_done, _ = environment.step(self.action, ignore_is_done=True)
                     latent_state, simulated_reward, hidden_state = self._synchronize_simulated_environment(current_state, self.action, hidden_state)
