@@ -32,8 +32,8 @@ class PlanningTester(BasePlanningTester):
                 # "planning_s_turn_test": (self._planning_s_turn_test, {OPTIMAL_REWARD: 43, OPTIMAL_STEPS: 100, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 16, CUSTOM_SEED: 9214, PRE_ACTIONS: None}),
                 # "planning_u_turn_test": (self._planning_u_turn_test, {OPTIMAL_REWARD: 40, OPTIMAL_STEPS: 280, RANDOM_REWARD: -5, TILES_TO_COMPLETE: 15, CUSTOM_SEED: 9214, PRE_ACTIONS: None}),
                 # "planning_whole_track_no_right_turns_test": (self._planning_whole_track_no_right_turns_test, {OPTIMAL_REWARD: 900, OPTIMAL_STEPS: 1000, RANDOM_REWARD: -32, TILES_TO_COMPLETE: 1200, CUSTOM_SEED: 30, PRE_ACTIONS: None}),
-                "planning_whole_random_track": (self._planning_whole_random_track_test, {OPTIMAL_REWARD: 900, OPTIMAL_STEPS: 900, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 1200, CUSTOM_SEED: None, PRE_ACTIONS: None}),
-                "planning_specific_track": (self._planning_specific_track_test, {OPTIMAL_REWARD: 900, OPTIMAL_STEPS: 900, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 1200, CUSTOM_SEED: 9214, PRE_ACTIONS: None})
+                "planning_whole_random_track": (self._planning_whole_random_track_test, {OPTIMAL_REWARD: 900, OPTIMAL_STEPS: 1000, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 1200, CUSTOM_SEED: None, PRE_ACTIONS: None}),
+                # "planning_specific_track": (self._planning_specific_track_test, {OPTIMAL_REWARD: 900, OPTIMAL_STEPS: 1000, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 1200, CUSTOM_SEED: 9214, PRE_ACTIONS: None})
 
         }
 
@@ -175,22 +175,22 @@ class PlanningTester(BasePlanningTester):
             self._render_fitness_and_trajory(current_state, step_elites, environment)
 
             # if self.config['planning']['planning_agent'] != "RANDOM":
-            #     print()
-            #     print('-- planned trajectory --')
-            #     self._simulate_dream(self.planning_agent.current_elite.action_sequence, current_state, hidden_state)
-            #     hard_turn = []
-            #     hard_turn.extend([[-1, self.planning_agent.current_elite.action_sequence[0][1], 0] for _ in range(15)])
-            #     hard_turn.extend([[0, self.planning_agent.current_elite.action_sequence[0][1], 0] for _ in range(10)])
-            #     hard_turn2 = []
-            #     hard_turn2.extend([[1, self.planning_agent.current_elite.action_sequence[0][1], 0] for _ in range(15)])
-            #     hard_turn2.extend([[0, self.planning_agent.current_elite.action_sequence[0][1], 0] for _ in range(10)])
-            #     forward = [[0, self.planning_agent.current_elite.action_sequence[0][1], 0] for _ in range(25)]
-            #     print('\n-- hard left --')
-            #     self._simulate_dream(hard_turn, current_state, hidden_state)
-            #     print('\n-- hard right --')
-            #     self._simulate_dream(hard_turn2, current_state, hidden_state)
-            #     print('\n-- forward --')
-            #     self._simulate_dream(forward, current_state, hidden_state)
+                # print()
+                # print('-- planned trajectory --')
+                # self._simulate_dream(self.planning_agent.current_elite.action_sequence, current_state, hidden_state)
+                # hard_turn = []
+                # hard_turn.extend([[-1, self.planning_agent.current_elite.action_sequence[0][1], 0] for _ in range(15)])
+                # hard_turn.extend([[0, self.planning_agent.current_elite.action_sequence[0][1], 0] for _ in range(10)])
+                # hard_turn2 = []
+                # hard_turn2.extend([[1, self.planning_agent.current_elite.action_sequence[0][1], 0] for _ in range(15)])
+                # hard_turn2.extend([[0, self.planning_agent.current_elite.action_sequence[0][1], 0] for _ in range(10)])
+                # forward = [[0, self.planning_agent.current_elite.action_sequence[0][1], 0] for _ in range(25)]
+                # print('\n-- hard left --')
+                # self._simulate_dream(hard_turn, current_state, hidden_state)
+                # print('\n-- hard right --')
+                # self._simulate_dream(hard_turn2, current_state, hidden_state)
+                # print('\n-- forward --')
+                # self._simulate_dream(forward, current_state, hidden_state)
 
             if negative_counter == max_negative_count or total_reward > 900:
                 break

@@ -21,6 +21,7 @@ import multiprocessing
 from copy import copy
 
 import torch
+from gym.envs.box2d.car_dynamics import Car
 from tqdm import tqdm
 from PIL import Image
 from vae.vae import VAE
@@ -78,9 +79,9 @@ class IterativeTrainer:
             test_threads = []
             start_time = time.time()
 
-            if iterations_count == 0:  # Pre-test non iterative model for baseline
-                iteration_results[iterations_count] = IterationResult(iteration=0)
-                self._test_planning(iteration=0, iteration_results=iteration_results, test_threads=test_threads)
+            # if iterations_count == 0:  # Pre-test non iterative model for baseline
+            #     iteration_results[iterations_count] = IterationResult(iteration=0)
+            #     self._test_planning(iteration=0, iteration_results=iteration_results, test_threads=test_threads)
 
             for _ in tqdm(range(self.num_iterations), desc=f"Current iteration {iterations_count+1}"):  # TODO: replace with "while task (900+ reward) is not completed"
                 iterations_count += 1
@@ -88,7 +89,7 @@ class IterativeTrainer:
 
                 self._generate_rollouts(iterations_count)  # Generate n planning rollouts of length T
                 self._train_mdrnn(copy(iterations_count), iteration_results)
-                self._test_planning(iterations_count, iteration_results, test_threads)  # Test plan performance
+                # self._test_planning(iterations_count, iteration_results, test_threads)  # Test plan performance
 
                 print(f'Iterations for model: {iterations_count} - {round((time.time() - start_time), 2)} seconds')
 
@@ -217,6 +218,11 @@ class IterativeTrainer:
             terminals.append(done)
         return actions, states, rewards, terminals
 
+    def _set_car_position(self, start_track, environment):
+        if start_track == 1:
+            return
+        environment.environment.env.car = Car(environment.environment.env.world, *environment.environment.env.track[start_track][1:4])
+
     def _save_rollout(self, actions, states, rewards, terminals):
         file_name = f'iterative_rollout_{rollout_counter.value}'
         np.savez_compressed(file=join(self.data_dir, file_name),
@@ -227,7 +233,8 @@ class IterativeTrainer:
 
     def _reset(self, environment, agent_wrapper):
         agent_wrapper.reset()
-        obs = environment.reset()
+        obs = environment.reset(seed=2)
+        self._set_car_position(start_track=222, environment=environment)
         return obs, environment
 
     def _log_iteration_test_results(self, iteration_result):
