@@ -161,7 +161,7 @@
     },
     "iterative_trainer": {
         "iterative_data_dir": "data_iterative",
-        "sequence_length": 100,
+        "sequence_length": 250,
         "num_rollouts": 500,
         "num_iterations": 1000,
         "max_epochs": 10,
