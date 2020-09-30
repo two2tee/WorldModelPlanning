@@ -10,12 +10,11 @@ from planning.interfaces.individual import Individual
 from tuning.evolution_handler import EvolutionHandler
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from planning.interfaces.abstract_rolling_horizon_simulation import AbstractRollingHorizon
-from utility.logging.single_step_logger import SingleStepLogger
 
 
 class RHEA(AbstractRollingHorizon):
     def __init__(self, population_size, horizon, max_generations, is_shift_buffer, is_rollout, max_rollouts=None, rollout_length=None,
-                 is_parallel_rollouts=False, is_delta_sampling=False):
+                 is_parallel_rollouts=False):
         super().__init__(population_size, horizon, max_generations, is_shift_buffer, is_rollout, max_rollouts, rollout_length)
         print(self.is_rollout)
         print(self.max_rollouts)
@@ -24,7 +23,6 @@ class RHEA(AbstractRollingHorizon):
         self.population = None
         self.elite_history = []
         self.current_elite = None
-        self.is_delta_sampling = is_delta_sampling
         self.is_parallel_rollouts = is_parallel_rollouts
 
         self.evolution_handler = EvolutionHandler(self.horizon)
@@ -40,16 +38,10 @@ class RHEA(AbstractRollingHorizon):
         self.current_elite = None
         self.population = self.initialize_population(environment, self.population_size)
 
-        # logger = SingleStepLogger(is_logging=True) # TODO REMOVE
-        # logger.start_log(f'World_Model_RandomNormal_RHEA_Same_Plan_h{self.horizon}_g{self.max_generations}')
         for generation in range(self.max_generations):
             self.evaluate_population(self.population, environment)
             self.current_elite = self._elitist_selection(self.population)
             self.population = self.evolve_population(environment, generation, self.population)
-            # self.population = list(map(lambda i : self._reset_i(i), self.population))
-
-            # logger.log_acc_reward_single_planning_step(test_name='planning_head_to_grass_right', step=generation, acc_reward=self.current_elite.fitness, actions=self.current_elite.action_sequence)
-        # logger.end_log()
 
         self.evaluate_population(self.population, environment)
         self.current_elite = self._elitist_selection(self.population)
@@ -73,14 +65,14 @@ class RHEA(AbstractRollingHorizon):
             individual.age = 0
             individual.fitness = 0
             individual.action_sequence.pop(0)
-            individual.action_sequence.append(environment.sample(individual.action_sequence[-1]) if self.is_delta_sampling else environment.sample())
+            individual.action_sequence.append(environment.sample())
             yield individual
 
     def _generate_individual(self, environment, horizon):
         previous_action = None
         action_sequence = []
         for _ in range(horizon):
-            action_sequence.append(environment.sample(previous_action) if self.is_delta_sampling else environment.sample())
+            action_sequence.append(environment.sample())
         return Individual(action_sequence)
 
     def evaluate_population(self, population, environment, is_parallel=True):

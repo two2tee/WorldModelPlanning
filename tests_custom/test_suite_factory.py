@@ -7,6 +7,7 @@ from tests_custom.car_racing.car_racing_model_tester import ModelTester as CarRa
 from tests_custom.car_racing.car_racing_planning_tester import PlanningTester as CarRacingPlanningTester
 from tests_custom.viz_doom.vizdoom_planning_tester import VizDoomPlanningTester
 
+
 def get_planning_tester(config, vae, mdrnn, preprocessor, agent):
     if config['game'] == 'CarRacing-v0':
         return CarRacingPlanningTester(config, vae, mdrnn, preprocessor, agent)

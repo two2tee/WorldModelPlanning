@@ -2,7 +2,6 @@ import time
 from tqdm import tqdm
 from tests_custom.base_planning_tester import BasePlanningTester, TEST_NAME, ELITES, CUSTOM_SEED, ACTION_HISTORY
 from gym.envs.box2d.car_dynamics import Car
-import math
 
 # custom args
 OPTIMAL_STEPS = 'optimal_steps'
@@ -15,25 +14,25 @@ PRE_ACTIONS = 'pre_actions'
 class PlanningTester(BasePlanningTester):
     def __init__(self, config, vae, mdrnn, preprocessor, planning_agent):
         super().__init__(config, vae, mdrnn, preprocessor, planning_agent)
-        self.is_render_best_elite_only = self.config['visualization']['is_render_best_elite_only']
+        self.is_render_best_elite_only = self.config['visualization']['is_best_elite_trajectory_only']
         self.is_render_fitness = self.config['visualization']['is_render_fitness']
         self.is_render_trajectory = self.config['visualization']['is_render_trajectory']
 
 
     def get_test_functions(self):
         return {  # (test_func, args)
-                # "planning_forward_left_side": (self._planning_forward_left_side, {OPTIMAL_REWARD: 66, OPTIMAL_STEPS: 100, RANDOM_REWARD: -7, TILES_TO_COMPLETE: 25, CUSTOM_SEED: 9214, PRE_ACTIONS: None}),
-                # "planning_forward_right_side": (self._planning_forward_right_side, {OPTIMAL_REWARD: 66, OPTIMAL_STEPS: 100, RANDOM_REWARD: -7, TILES_TO_COMPLETE: 25, CUSTOM_SEED: 9214, PRE_ACTIONS: None}),
-                # "planning_head_to_grass_right": (self._planning_head_to_grass_right, {OPTIMAL_REWARD: 66, OPTIMAL_STEPS: 100, RANDOM_REWARD: -7, TILES_TO_COMPLETE: 25, CUSTOM_SEED: 9214, PRE_ACTIONS: None}),
-                # "planning_head_to_grass_left": (self._planning_head_to_grass_left, {OPTIMAL_REWARD: 66, OPTIMAL_STEPS: 100, RANDOM_REWARD: -7, TILES_TO_COMPLETE: 25, CUSTOM_SEED: 9214, PRE_ACTIONS: None}),
-                # "planning_forward_test": (self._planning_forward_test, {OPTIMAL_REWARD: 66, OPTIMAL_STEPS: 100, RANDOM_REWARD: -7, TILES_TO_COMPLETE: 25, CUSTOM_SEED: 9214, PRE_ACTIONS: None}),
-                # "planning_left_turn_test": (self._planning_left_turn_test, {OPTIMAL_REWARD: 23, OPTIMAL_STEPS: 100, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 10, CUSTOM_SEED: 9214, PRE_ACTIONS: None}),
-                # "planning_right_turn_test": (self._planning_right_turn_test,{OPTIMAL_REWARD: 33, OPTIMAL_STEPS: 100, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 11, CUSTOM_SEED: 2, PRE_ACTIONS: None}),
-                # "planning_s_turn_test": (self._planning_s_turn_test, {OPTIMAL_REWARD: 43, OPTIMAL_STEPS: 100, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 16, CUSTOM_SEED: 9214, PRE_ACTIONS: None}),
-                # "planning_u_turn_test": (self._planning_u_turn_test, {OPTIMAL_REWARD: 40, OPTIMAL_STEPS: 280, RANDOM_REWARD: -5, TILES_TO_COMPLETE: 15, CUSTOM_SEED: 9214, PRE_ACTIONS: None}),
-                # "planning_whole_track_no_right_turns_test": (self._planning_whole_track_no_right_turns_test, {OPTIMAL_REWARD: 900, OPTIMAL_STEPS: 1000, RANDOM_REWARD: -32, TILES_TO_COMPLETE: 1200, CUSTOM_SEED: 30, PRE_ACTIONS: None}),
+                "planning_forward_left_side": (self._planning_forward_left_side, {OPTIMAL_REWARD: 66, OPTIMAL_STEPS: 100, RANDOM_REWARD: -7, TILES_TO_COMPLETE: 25, CUSTOM_SEED: 9214, PRE_ACTIONS: None}),
+                "planning_forward_right_side": (self._planning_forward_right_side, {OPTIMAL_REWARD: 66, OPTIMAL_STEPS: 100, RANDOM_REWARD: -7, TILES_TO_COMPLETE: 25, CUSTOM_SEED: 9214, PRE_ACTIONS: None}),
+                "planning_head_to_grass_right": (self._planning_head_to_grass_right, {OPTIMAL_REWARD: 66, OPTIMAL_STEPS: 100, RANDOM_REWARD: -7, TILES_TO_COMPLETE: 25, CUSTOM_SEED: 9214, PRE_ACTIONS: None}),
+                "planning_head_to_grass_left": (self._planning_head_to_grass_left, {OPTIMAL_REWARD: 66, OPTIMAL_STEPS: 100, RANDOM_REWARD: -7, TILES_TO_COMPLETE: 25, CUSTOM_SEED: 9214, PRE_ACTIONS: None}),
+                "planning_forward_test": (self._planning_forward_test, {OPTIMAL_REWARD: 66, OPTIMAL_STEPS: 100, RANDOM_REWARD: -7, TILES_TO_COMPLETE: 25, CUSTOM_SEED: 9214, PRE_ACTIONS: None}),
+                "planning_left_turn_test": (self._planning_left_turn_test, {OPTIMAL_REWARD: 23, OPTIMAL_STEPS: 100, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 10, CUSTOM_SEED: 9214, PRE_ACTIONS: None}),
+                "planning_right_turn_test": (self._planning_right_turn_test,{OPTIMAL_REWARD: 33, OPTIMAL_STEPS: 100, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 11, CUSTOM_SEED: 2, PRE_ACTIONS: None}),
+                "planning_s_turn_test": (self._planning_s_turn_test, {OPTIMAL_REWARD: 43, OPTIMAL_STEPS: 100, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 16, CUSTOM_SEED: 9214, PRE_ACTIONS: None}),
+                "planning_u_turn_test": (self._planning_u_turn_test, {OPTIMAL_REWARD: 40, OPTIMAL_STEPS: 280, RANDOM_REWARD: -5, TILES_TO_COMPLETE: 15, CUSTOM_SEED: 9214, PRE_ACTIONS: None}),
+                "planning_whole_track_no_right_turns_test": (self._planning_whole_track_no_right_turns_test, {OPTIMAL_REWARD: 900, OPTIMAL_STEPS: 1000, RANDOM_REWARD: -32, TILES_TO_COMPLETE: 1200, CUSTOM_SEED: 30, PRE_ACTIONS: None}),
                 "planning_whole_random_track": (self._planning_whole_random_track_test, {OPTIMAL_REWARD: 900, OPTIMAL_STEPS: 1000, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 1200, CUSTOM_SEED: None, PRE_ACTIONS: None}),
-                # "planning_specific_track": (self._planning_specific_track_test, {OPTIMAL_REWARD: 900, OPTIMAL_STEPS: 1000, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 1200, CUSTOM_SEED: 9214, PRE_ACTIONS: None})
+                "planning_specific_track": (self._planning_specific_track_test, {OPTIMAL_REWARD: 900, OPTIMAL_STEPS: 1000, RANDOM_REWARD: -3, TILES_TO_COMPLETE: 1200, CUSTOM_SEED: 9214, PRE_ACTIONS: None})
 
         }
 
@@ -125,10 +124,10 @@ class PlanningTester(BasePlanningTester):
         return self._run_plan_or_replay(args=args)
 
     def _planning_specific_track_test(self, args):
+        args[TEST_NAME] = f'planning_specific_track - seed: {args[CUSTOM_SEED]}'
         # pre_actions = []
         # pre_actions.extend([[0, 1, 0] for _ in range(35)])
         # args[PRE_ACTIONS] = pre_actions
-        args[TEST_NAME] = f'planning_specific_track - seed: {args[CUSTOM_SEED]}'
         # args[START_TRACK] = 67
         args[START_TRACK] = 1
         return self._run_plan_or_replay(args=args)
@@ -174,23 +173,8 @@ class PlanningTester(BasePlanningTester):
 
             self._render_fitness_and_trajory(current_state, step_elites, environment)
 
-            # if self.config['planning']['planning_agent'] != "RANDOM":
-                # print()
-                # print('-- planned trajectory --')
-                # self._simulate_dream(self.planning_agent.current_elite.action_sequence, current_state, hidden_state)
-                # hard_turn = []
-                # hard_turn.extend([[-1, self.planning_agent.current_elite.action_sequence[0][1], 0] for _ in range(15)])
-                # hard_turn.extend([[0, self.planning_agent.current_elite.action_sequence[0][1], 0] for _ in range(10)])
-                # hard_turn2 = []
-                # hard_turn2.extend([[1, self.planning_agent.current_elite.action_sequence[0][1], 0] for _ in range(15)])
-                # hard_turn2.extend([[0, self.planning_agent.current_elite.action_sequence[0][1], 0] for _ in range(10)])
-                # forward = [[0, self.planning_agent.current_elite.action_sequence[0][1], 0] for _ in range(25)]
-                # print('\n-- hard left --')
-                # self._simulate_dream(hard_turn, current_state, hidden_state)
-                # print('\n-- hard right --')
-                # self._simulate_dream(hard_turn2, current_state, hidden_state)
-                # print('\n-- forward --')
-                # self._simulate_dream(forward, current_state, hidden_state)
+            if self.config['planning']['planning_agent'] != "RANDOM":
+                self._simulate_dream(self.planning_agent.current_elite.action_sequence, current_state, hidden_state)
 
             if negative_counter == max_negative_count or total_reward > 900:
                 break
@@ -267,8 +251,7 @@ class PlanningTester(BasePlanningTester):
     def _set_car_position(self, start_track, environment):
         if start_track == 1:
             return
-        environment.environment.env.car = Car(environment.environment.env.world,
-                                              *environment.environment.env.track[start_track][1:4])
+        environment.environment.env.car = Car(environment.environment.env.world, *environment.environment.env.track[start_track][1:4])
 
     def _reward_diff_percentage(self, actual, control):
         return round((actual-control) / 100) if abs(actual) == 0 else round((actual-control) / abs(actual) * 100)

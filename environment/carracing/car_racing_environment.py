@@ -13,6 +13,10 @@ class CarRacingEnvironment(BaseEnvironment):
         self.is_random_inital_car_position = self.config['real_environment']['car_racing']['random_intial_car_pos']
         self.is_standard_reward = self.config['real_environment']['car_racing']['standardize_reward']
 
+    def step(self, action, ignore_is_done=False):
+        state, reward, is_done, info = super().step(action, ignore_is_done)
+        reward = self._standardize_reward(reward) if self.is_standard_reward else reward
+        return state, self._standardize_reward(reward), is_done, info
 
     def reset(self, seed=None):
         super(CarRacingEnvironment, self).reset()
@@ -34,11 +38,6 @@ class CarRacingEnvironment(BaseEnvironment):
         self.environment.car = Car(self.environment.world, *self.environment.track[random_car_position][1:4])
         obs, _, _, _ = self.step([0, 0, 0])
         return obs
-
-    def step(self, action, ignore_is_done=False):
-        state, reward, is_done, info = super().step(action, ignore_is_done)
-        reward = self._standardize_reward(reward) if self.is_standard_reward else reward
-        return state, self._standardize_reward(reward), is_done, info
 
     def _standardize_reward(self, reward):
         reward = 3.0 if reward > 3 else reward

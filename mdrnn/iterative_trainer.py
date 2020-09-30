@@ -10,24 +10,21 @@
 #  Written by Thor V.A.N. Olesen <thorolesen@gmail.com> & Dennis T.T. Nguyen <dennisnguyen3000@yahoo.dk>.
 
 import os
-import sys
-
 import gym
 import time
+import torch
 import pickle
 import platform
 import numpy as np
 import multiprocessing
 from copy import copy
-
-import torch
-from gym.envs.box2d.car_dynamics import Car
 from tqdm import tqdm
 from PIL import Image
 from vae.vae import VAE
 from mdrnn.mdrnn import MDRNN
 from os.path import join, exists
 from vae.vae_trainer import VaeTrainer
+from gym.envs.box2d.car_dynamics import Car
 from utility.preprocessor import Preprocessor
 from tests_custom.test_suite_factory import get_planning_tester
 from planning.simulation.agent_wrapper import AgentWrapper
@@ -48,7 +45,7 @@ class IterativeTrainer:
         self.config = config
         self.mdrnn_trainer = mdrnn_trainer
         self.planning_agent = planning_agent
-        self.threads = self._get_threads()
+        self.threads = self._get_thread_count()
         self.img_width = config["preprocessor"]["img_width"]
         self.img_height = config["preprocessor"]["img_height"]
         self.max_epochs = config["iterative_trainer"]["max_epochs"]
@@ -79,17 +76,17 @@ class IterativeTrainer:
             test_threads = []
             start_time = time.time()
 
-            # if iterations_count == 0:  # Pre-test non iterative model for baseline
-            #     iteration_results[iterations_count] = IterationResult(iteration=0)
-            #     self._test_planning(iteration=0, iteration_results=iteration_results, test_threads=test_threads)
+            if iterations_count == 0:  # Pre-test non iterative model for baseline
+                iteration_results[iterations_count] = IterationResult(iteration=0)
+                self._test_planning(iteration=0, iteration_results=iteration_results, test_threads=test_threads)
 
-            for _ in tqdm(range(self.num_iterations), desc=f"Current iteration {iterations_count+1}"):  # TODO: replace with "while task (900+ reward) is not completed"
+            for _ in tqdm(range(self.num_iterations), desc=f"Current iteration {iterations_count+1}"):
                 iterations_count += 1
                 iteration_results[iterations_count] = IterationResult(iteration=iterations_count)
 
                 self._generate_rollouts(iterations_count)  # Generate n planning rollouts of length T
                 self._train_mdrnn(copy(iterations_count), iteration_results)
-                # self._test_planning(iterations_count, iteration_results, test_threads)  # Test plan performance
+                self._test_planning(iterations_count, iteration_results, test_threads)  # Test plan performance
 
                 print(f'Iterations for model: {iterations_count} - {round((time.time() - start_time), 2)} seconds')
 
@@ -98,10 +95,11 @@ class IterativeTrainer:
             self._save_iteration_stats(iteration_results)
 
     def _generate_rollouts(self, iteration):
+        self.threads = self.num_rollouts if self.num_rollouts < self.threads else self.threads
+        self._set_torch_threads(threads=1)  # 1 to ensure underlying threads only uses 1 thread to prevent hidden threading - speed fix when multithreaded rollout generation
+
         vae, mdrnn = self._get_vae_mdrnn()
         vae, mdrnn = vae.eval(), mdrnn.eval()
-        self.threads = self.num_rollouts if self.num_rollouts < self.threads else self.threads
-        self._set_torch_threads(threads=1)  # 1 to ensure underlying threads only uses 1 thread to prevent hidden threading
         num_rollouts_per_thread = int(self.num_rollouts / self.threads)
         print(f'{self.num_rollouts} rollouts across {self.threads} cores with {num_rollouts_per_thread} rollouts each.')
 
@@ -124,7 +122,7 @@ class IterativeTrainer:
         tqdm.set_lock(tqdm_lock)
 
     def _set_rollout_count(self):
-        if self.is_replay_buffer:
+        if self.is_replay_buffer:  # To override old files if rollout capacity is full
             rollout_counter.value = 1 if rollout_counter.value > self.max_buffer_size else rollout_counter.value + 1
         else:
             rollout_counter.value = 1 if rollout_counter.value > self.num_rollouts else rollout_counter.value + 1
@@ -144,14 +142,52 @@ class IterativeTrainer:
 
         environment.close()
 
-    def _test_planning(self, iteration, iteration_results, test_threads):
-        if len(test_threads) >= self.max_test_threads:  # Prevent spawning too many test threads
-            [p.join() for p in test_threads]
-        p = Process(target=self._test_thread, args=[iteration, iteration_results])
-        p.start()
-        test_threads.append(p)
+    def _create_rollout(self, agent_wrapper, environment, thread_id, rollout_number, num_rollouts_per_thread, iteration):
+        state, environment = self._reset(environment, agent_wrapper)
+        actions, states, rewards, terminals = [], [], [], []
+        progress_description = f"Data generation at iteration {iteration} | thread: {thread_id} | rollout: {rollout_number}/{num_rollouts_per_thread}"
+        for _ in tqdm(range(self.sequence_length+1), desc=progress_description, position=thread_id-1):
+            action = agent_wrapper.search(state)
+            state, reward, done, info = environment.step(action)
+            agent_wrapper.synchronize(state, action)
+            state = np.array(Image.fromarray(state).resize(size=(self.img_width, self.img_height)))
+            actions.append(action)
+            states.append(state)
+            rewards.append(reward)
+            terminals.append(done)
+        return actions, states, rewards, terminals
 
-    # Needed since multi threading does not work with shared GPU/CPU for model
+    def _get_vae_mdrnn(self):
+        vae_trainer = VaeTrainer(self.config, preprocesser=None)
+        vae = vae_trainer.reload_model(VAE(self.config), device='cpu')
+        vae.cpu()
+        mdrnn = MDRNN(num_actions=get_action_sampler(self.config).num_actions,
+                      latent_size=self.config['latent_size'],
+                      num_gaussians=self.config['mdrnn']['num_gaussians'],
+                      num_hidden_units=self.config['mdrnn']['hidden_units'])
+        mdrnn = self.mdrnn_trainer.reload_model(mdrnn, device='cpu')
+        mdrnn.cpu()
+        return vae, mdrnn
+
+    def _set_car_position(self, start_track, environment):
+        if start_track == 1:
+            return
+        environment.environment.env.car = Car(environment.environment.env.world, *environment.environment.env.track[start_track][1:4])
+
+    def _save_rollout(self, actions, states, rewards, terminals):
+        file_name = f'iterative_rollout_{rollout_counter.value}'
+        np.savez_compressed(file=join(self.data_dir, file_name),
+                            observations=np.array(states),
+                            rewards=np.array(rewards),
+                            actions=np.array(actions),
+                            terminals=np.array(terminals))
+
+    def _reset(self, environment, agent_wrapper):
+        agent_wrapper.reset()
+        obs = environment.reset(seed=2)
+        self._set_car_position(start_track=222, environment=environment)
+        return obs, environment
+
     def _train_mdrnn(self, iteration, iteration_results):
         start = time.time()
         self._set_torch_threads(threads=multiprocessing.cpu_count())
@@ -168,6 +204,14 @@ class IterativeTrainer:
         iteration_result = iteration_results[iteration]
         iteration_result.mdrnn_test_losses = test_losses
         iteration_results[iteration] = iteration_result
+
+    # Needed threads since multi threading does not work with shared GPU/CPU for model
+    def _test_planning(self, iteration, iteration_results, test_threads):
+        if len(test_threads) >= self.max_test_threads:  # Prevent spawning too many test threads
+            [p.join() for p in test_threads]
+        p = Process(target=self._test_thread, args=[iteration, iteration_results])
+        p.start()
+        test_threads.append(p)
 
     def _test_thread(self, iteration, iteration_results):
         print(f'Running test for iteration: {iteration}')
@@ -191,52 +235,6 @@ class IterativeTrainer:
         print(f'Test for iteration: {iteration} completed')
         return test_name
 
-    def _get_vae_mdrnn(self):
-        vae_trainer = VaeTrainer(self.config, preprocesser=None)
-        vae = vae_trainer.reload_model(VAE(self.config), device='cpu')
-        vae.cpu()
-        mdrnn = MDRNN(num_actions=get_action_sampler(self.config).num_actions,
-                      latent_size=self.config['latent_size'],
-                      num_gaussians=self.config['mdrnn']['num_gaussians'],
-                      num_hidden_units=self.config['mdrnn']['hidden_units'])
-        mdrnn = self.mdrnn_trainer.reload_model(mdrnn, device='cpu')
-        mdrnn.cpu()
-        return vae, mdrnn
-
-    def _create_rollout(self, agent_wrapper, environment, thread_id, rollout_number, num_rollouts_per_thread, iteration):
-        state, environment = self._reset(environment, agent_wrapper)
-        actions, states, rewards, terminals = [], [], [], []
-        progress_description = f"Data generation at iteration {iteration} | thread: {thread_id} | rollout: {rollout_number}/{num_rollouts_per_thread}"
-        for _ in tqdm(range(self.sequence_length+1), desc=progress_description, position=thread_id-1):
-            action = agent_wrapper.search(state)
-            state, reward, done, info = environment.step(action)
-            agent_wrapper.synchronize(state, action)
-            state = np.array(Image.fromarray(state).resize(size=(self.img_width, self.img_height)))
-            actions.append(action)
-            states.append(state)
-            rewards.append(reward)
-            terminals.append(done)
-        return actions, states, rewards, terminals
-
-    def _set_car_position(self, start_track, environment):
-        if start_track == 1:
-            return
-        environment.environment.env.car = Car(environment.environment.env.world, *environment.environment.env.track[start_track][1:4])
-
-    def _save_rollout(self, actions, states, rewards, terminals):
-        file_name = f'iterative_rollout_{rollout_counter.value}'
-        np.savez_compressed(file=join(self.data_dir, file_name),
-                            observations=np.array(states),
-                            rewards=np.array(rewards),
-                            actions=np.array(actions),
-                            terminals=np.array(terminals))
-
-    def _reset(self, environment, agent_wrapper):
-        agent_wrapper.reset()
-        obs = environment.reset(seed=2)
-        self._set_car_position(start_track=222, environment=environment)
-        return obs, environment
-
     def _log_iteration_test_results(self, iteration_result):
         logger = PlanningLogger(is_logging=True)
         logger.start_log(name=f'{self.config["experiment_name"]}_main_{iteration_result.agent_name}')
@@ -247,7 +245,6 @@ class IterativeTrainer:
                                         iteration=iteration_result.iteration, avg_reward=iteration_result.get_average_total_reward())
         logger.log_reward_mean_std(iteration_result.test_name, iteration_result.trials_rewards, iteration_result.iteration)
         logger.end_log()
-
 
     def _save_iteration_stats(self, iteration_results):
         stats_filename = f'iterative_stats_{self.config["experiment_name"]}'
@@ -275,7 +272,7 @@ class IterativeTrainer:
                 return iteration_results, len(iteration_results)
         return {}, 0
 
-    def _get_threads(self):
+    def _get_thread_count(self):
         fixed_cores = self.config["iterative_trainer"]["fixed_cpu_cores"]
         return fixed_cores if fixed_cores else multiprocessing.cpu_count()
 

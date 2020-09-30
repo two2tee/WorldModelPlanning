@@ -11,21 +11,19 @@ from concurrent.futures import as_completed
 from planning.interfaces.individual import Individual
 from tuning.evolution_handler import EvolutionHandler
 from concurrent.futures.thread import ThreadPoolExecutor
-from utility.logging.single_step_logger import SingleStepLogger
 from planning.interfaces.abstract_hill_climb_simulation import AbstractRandomMutationHillClimbing
 from tqdm import tqdm
 
 
 class RMHC(AbstractRandomMutationHillClimbing):
     def __init__(self, horizon, max_generations, is_shift_buffer, is_rollout, max_rollouts=None, rollout_length=None,
-                 is_parallel_rollouts=False, is_delta_sampling=False):
+                 is_parallel_rollouts=False):
         super().__init__(horizon, max_generations, is_shift_buffer, is_rollout, max_rollouts, rollout_length)
         self.current_elite = None
         self.latent = None
         self.hidden = None
         self.elite_history = []
         self.is_parallel_rollouts = is_parallel_rollouts
-        self.is_delta_sampling = is_delta_sampling
 
         self.evolution_handler = EvolutionHandler(self.horizon)
         self.mutation_operator = self.evolution_handler.get_mutation_operator()
@@ -35,49 +33,26 @@ class RMHC(AbstractRandomMutationHillClimbing):
         self.hidden = hidden
         self.elite_history = []
         self.current_elite = self._initialize_individual(environment)
-
         self._evaluate_individual(self.current_elite, environment)
         self._append_elite(self.current_elite)
 
-        # logger = SingleStepLogger(is_logging=True) # TODO REMOVE
-        # logger.start_log(f'World_Model_iter_A_20_RMHC_averaged_all_h{self.horizon}_g{self.max_generations}')
         for generation in range(self.max_generations):
             self._step_generation(generation, environment)
-
-        # self._single_step_testing(environment, logger)
-        # logger.end_log()
 
         best_action = self.current_elite.action_sequence[0]
         return best_action, self.elite_history
 
     def _step_generation(self, generation, environment):
-        mutated_individual = self._mutate(environment, self.current_elite, generation) # copy.deepcopy(self.current_elite) #
+        mutated_individual = self._mutate(environment, self.current_elite, generation)
         self.current_elite = self._select_best_individual(self.current_elite, mutated_individual, environment)
-
-    def _single_step_testing(self, environment, logger):
-        for generation, elite in tqdm(enumerate(self.elite_history)):
-            elite_copy = Individual(action_sequence=elite[2], age=generation, fitness=elite[0])
-            rewards = []
-            for _ in range(100):
-                elite_copy.fitness = 0
-                self._evaluate_individual(elite_copy, environment)
-                rewards.append(elite_copy.fitness)
-            rewards = np.array(rewards)
-            elite_copy.fitness = round(rewards.mean(), 3)
-            elite_copy.standard_deviation = round(rewards.std(), 4)
-
-            logger.log_acc_reward_single_planning_step(test_name='planning_head_to_grass_right', step=generation,
-                                                   acc_reward=elite_copy.fitness, std=elite_copy.standard_deviation,
-                                                   actions=[])
 
     def _initialize_individual(self, environment):
         if self.is_shift_buffer and self.current_elite is not None:
             individual = self._shift_buffer(environment, self.current_elite)
         else:
-            previous_action = None
             action_sequence = []
             for _ in range(self.horizon):
-                action_sequence.append(environment.sample(previous_action) if self.is_delta_sampling else environment.sample())
+                action_sequence.append(environment.sample())
             individual = Individual(action_sequence)
         individual.fitness, individual.age = 0, 0  # reset across generations
         return individual
@@ -90,7 +65,7 @@ class RMHC(AbstractRandomMutationHillClimbing):
 
     def _shift_buffer(self, environment, individual):
         individual.action_sequence.pop(0)
-        individual.action_sequence.append(environment.sample(individual.action_sequence[-1]) if self.is_delta_sampling else environment.sample())
+        individual.action_sequence.append(environment.sample())
         return individual
 
     def _rollout(self, environment, latent, hidden, is_parallel=True):

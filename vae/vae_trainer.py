@@ -182,10 +182,11 @@ class VaeTrainer:
 
     def _log_random_constructions(self, epoch):
         with torch.no_grad():
-            shape = (self.config['num_reconstructions'],  # 64 reconstructions
+            logging_num_reconstructions = self.config['vae_trainer']['logging_num_reconstructions']
+            shape = (logging_num_reconstructions,  # 64 reconstructions
                      self.config['preprocessor']['num_channels'],  # 3 image channels
                      self.preprocessor.img_height, self.preprocessor.img_width)  # size 64x64
-            z_samples = torch.randn(self.config['num_reconstructions'], self.config['latent_size']).to(self.device)
+            z_samples = torch.randn(logging_num_reconstructions, self.config['latent_size']).to(self.device)
             reconstructed_sample_frames = self.vae.decoder(z_samples).cpu()  # Extract reconstruction from GPU
             reconstructed_sample_frames = reconstructed_sample_frames.view(shape)
             self.logger.log_vae_random_constructions(reconstructed_sample_frames, epoch)

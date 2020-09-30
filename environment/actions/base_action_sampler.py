@@ -14,7 +14,7 @@ class BaseActionSampler:
         self.is_discretize_sampling = config['planning']['is_discretize_sampling']
         self.num_actions = num_actions
 
-    def sample(self, previous_action=None):
+    def sample(self):
         return NotImplemented
 
     def sample_logits(self):

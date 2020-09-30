@@ -19,7 +19,7 @@ class VizDoomPlanningTester(BasePlanningTester):
     def _update_trial_results(self, trial_results_dto , total_reward):
         trial_results_dto['max_reward'] = total_reward if total_reward > trial_results_dto['max_reward'] else trial_results_dto['max_reward']
 
-    def _print_trial_results(self, trial, elapsed_time, total_reward, steps_ran, trial_results_dto):
+    def _print_trial_results(self, trial, seed, elapsed_time, total_reward, steps_ran, trial_results_dto):
         test_name = trial_results_dto['test_name']
         test_success = trial_results_dto['test_success']
 
@@ -62,11 +62,9 @@ class VizDoomPlanningTester(BasePlanningTester):
             elites.append(step_elites)
 
             if self.is_render_dream:
-                self._step_sequence_in_dream(self.planning_agent.current_elite.action_sequence, current_state,
-                                             hidden_state)
+                self._step_sequence_in_dream(self.planning_agent.current_elite.action_sequence, current_state, hidden_state)
 
-            current_state, reward, is_done, simulated_reward, simulated_is_done, latent_state, hidden_state = \
-                self._step(action, hidden_state)
+            current_state, reward, is_done, simulated_reward, simulated_is_done, latent_state, hidden_state = self._step(action, hidden_state, environment)
 
             action_history.append(action)
             total_reward += reward
@@ -74,7 +72,7 @@ class VizDoomPlanningTester(BasePlanningTester):
             elapsed_time = time.time() - start_time
             self._update_trial_results(trial_results_dto, reward)
 
-        self._print_trial_results(trial_i, elapsed_time, total_reward, steps_ran, trial_results_dto)
+        self._print_trial_results(trial_i, seed, elapsed_time, total_reward, steps_ran, trial_results_dto)
         environment.close()
         return elites, action_history, total_reward, trial_results_dto['max_reward'], seed
 

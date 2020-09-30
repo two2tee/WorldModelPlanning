@@ -123,7 +123,7 @@ class MDRNNTrainer:
         self.logger.start_log_training_minimal(name=f'{self.session_name}{f"_iteration_{iteration}" if self.is_iterative else ""}')
         self.optimizer = optim.Adam(self.mdrnn.parameters(), lr=self.config['mdrnn_trainer']['learning_rate'])
         self.scheduler = self._get_scheduler(self.optimizer)
-        self.earlystopping = EarlyStopping('min', patience=self.config['mdrnn_trainer']['early_stop_after_n_epochs'])
+        self.earlystopping = EarlyStopping('min', patience=self.config['mdrnn_trainer']['early_stop_after_n_bad_epochs'])
         train = partial(self._data_pass, is_train=True, include_reward=True)
         test = partial(self._data_pass, is_train=False, include_reward=True)
 
@@ -357,7 +357,6 @@ class MDRNNTrainer:
         return losses,  batch_results
 
     def _test_step(self, latent_obs, action, reward, terminal, latent_next_obs, include_reward):
-        # reward = self._normalize_rewards(reward)
         with torch.no_grad():
             return self._get_loss(latent_obs, action, reward, terminal, latent_next_obs, include_reward)
 
@@ -448,12 +447,6 @@ class MDRNNTrainer:
                                            for x_mu, x_logsigma in
                                            [(obs_mu, obs_logsigma), (next_obs_mu, next_obs_logsigma)]]
         return latent_obs, latent_next_obs
-
-    def _normalize_rewards(self, rewards):
-        for batch in rewards:
-            for i, reward in enumerate(batch):
-                batch[i] = -1 if reward == -100 else reward
-        return rewards
 
     def _update_cumulative_losses(self, cumulative_losses, current_losses):
         cumulative_losses['loss'] += current_losses['loss'].item()

@@ -4,6 +4,7 @@ from environment.environment_factory import get_environment
 
 multiprocessing.set_start_method('spawn') if multiprocessing.get_start_method() is None else None
 
+
 class BaseTester:
     def __init__(self, config, vae, mdrnn, preprocessor, trials):
         self.config = config

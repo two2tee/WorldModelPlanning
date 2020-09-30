@@ -3,7 +3,6 @@
     "experiment_name": "iterative_5_World_Model_Iter_A",
     "forced_vae": "World_Model_Random",
     "latent_size": 64,
-    "num_reconstructions": 64,
     "is_generate_data": false,
     "is_train_vae": false,
     "is_train_mdrnn": false,
@@ -16,15 +15,13 @@
     "mdrnn_dir": "mdrnn",
     "data_dir": "data",
     "test_data_dir": "data_test",
-    "is_use_specific_test_data": false  ,
+    "is_use_specific_test_data": false,
     "visualization": {
-        "is_render": false,
-        "is_render_trajectory": false,
-        "is_render_best_elite_only": false,
-        "is_render_fitness": false,
-        "is_render_simulation": false,
+        "is_render": true,
         "is_render_dream": false,
-        "is_render_reconstructions": false
+        "is_render_fitness": false,
+        "is_render_trajectory": false,
+        "is_best_elite_trajectory_only": true
     },
     "test_suite": {
         "is_run_model_tests": false,
@@ -32,11 +29,11 @@
         "is_reload_planning_session": false,
         "trials": 100,
         "is_multithread_tests": false,
-        "is_multithread_trials": true,
+        "is_multithread_trials": false,
         "fixed_cores": null,
         "planning_test_log_dir": "planning_test_results",
-        "planning_session_to_load": "CarRacing-v0_RMHC_iterative_6_World_Model_Iter_B_planning_session_2020-09-16-00.00_total_session_best_reward_822.6",
-        "is_logging": true,
+        "planning_session_to_load": "",
+        "is_logging": false,
         "car_racing": {
             "max_negative_count": 50
         }
@@ -64,6 +61,7 @@
         "test_buffer_size": 50,
         "num_workers": 0,
         "is_save_reconstruction": true,
+        "logging_num_reconstructions": 64,
         "is_continue_model": true,
         "vae_best_filename": "vae_best.tar",
         "vae_checkpoint_filename": "vae_checkpoint.tar"
@@ -153,7 +151,7 @@
         "N_train_batch_until_test_batch": 5,
         "N_train_batch_until_pred_sampling": 200,
         "is_random_sampling": true,
-        "early_stop_after_n_epochs": 5,
+        "early_stop_after_n_bad_epochs": 5,
         "ReduceLROnPlateau": {
             "mode": "min",
             "factor": 0.5,
@@ -198,11 +196,11 @@
         "mutation_method": "subset_mutation",
         "mutation_probability": 0.20,
         "tournament_percentage": 0.5,
-        "seed": "None"
+        "random_seed": null
     },
     "ntbea_tuning":{
         "is_reload_session": false,
-        "session_name": "ntbea_session_World_Model_M_RHEA",
+        "session_name": "ntbea_session_World_Model_A_RMHC",
         "iterations": 100,
         "mutation_point_probability": 0.5,
         "explore_rate": 2.0,
@@ -230,18 +228,16 @@
             "is_rollout": false,
             "max_rollouts": 1,
             "rollout_length": 10,
-            "is_parallel_rollouts": false,
-            "is_delta_sampling": false
+            "is_parallel_rollouts": false
         },
         "random_mutation_hill_climb": {
-            "horizon": 20,
-            "max_generations": 20,
+            "horizon": 30,
+            "max_generations": 10,
             "is_shift_buffer": true,
             "is_rollout": false,
             "max_rollouts": 1,
             "rollout_length": 20,
-            "is_parallel_rollouts": false,
-            "is_delta_sampling": false
+            "is_parallel_rollouts": false
         },
         "monte_carlo_tree_search": {
             "max_rollouts": 100,

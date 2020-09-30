@@ -18,12 +18,13 @@ Check is_generate data  - False
 Check is_train_vae  - False
 Check is_train_mdrnn - False
 Check is_iterative_train_mdrnn - True
+Check is_logging - True : Test_suite attribute
 Check MDRNN Seq len
 Check Rollouts
 Check Iterations
 Check Max epoch
 Check fixed cores - null
-Check test_scenario : planning_whole_random_track for car racing and "" for vizdoom
+Check test_scenario : planning_whole_random_track for car racing
 
 
 ## Planning Agent
@@ -31,4 +32,3 @@ Check planning agent is either RMHC or RHEA
 Check population
 Check Horizon
 Check Generation
-Check SB is off

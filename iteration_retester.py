@@ -2,7 +2,7 @@
 # Run tests
 # Update Iterative stats
 # Update Tensorboard
-# TODO TEMPORARY ITERATIVE TEST RUNNER - WILL REMOVE WHEN DONE
+''' TOOL Used to rerun planning tests on iterative trained models'''
 import json
 import os
 import pickle
@@ -101,17 +101,26 @@ def load_iteration_stats(experiment_name):
 def make_session_name(model_name, agent_name,  iteration, agent):
     return f'{model_name}_{agent_name}_iteration_{iteration}_h{agent.horizon}_g{agent.max_generations}_sb{agent.is_shift_buffer}'
 
+
+"""
+- Define experiment names
+- Define what iteration to start from ie 0 is beginning
+- Ensure specific test is available in planning tester
+- Ensure is_logging is true in config under test_suite to log results
+- Run the script
+"""
 if __name__ == '__main__':
     torch.set_num_threads(1)
-    os.environ['OMP_NUM_THREADS'] = str(1)  # Inference in CPU to avoid cpu scheduling - slow parallel data generation
-
+    os.environ['OMP_NUM_THREADS'] = str(1)
     frame_preprocessor = Preprocessor(config['preprocessor'])
     vae = VAE(config)
     vae_trainer = VaeTrainer(config, frame_preprocessor)
     vae = vae_trainer.reload_model(vae, device='cpu')
     agent = get_planning_agent()
 
-    experiment_names = ['World_Model_Iter_A']
+    experiment_names = ['World_Model_Iter_A']  # TODO DEFINE MODELS TO RETEST (add many for multiple models)
+    start_from_iter = 0                        # TODO DEFINE WHAT ITERATION TO START FROM
+
     for experiment_name in experiment_names:
         mdrnn_models_location = 'mdrnn/checkpoints/backups'
         files = [os.path.join(root, name) for root, dirs, files in os.walk(mdrnn_models_location) for name in files]
@@ -121,7 +130,7 @@ if __name__ == '__main__':
 
         iteration_results = {}
         for file in files:
-            if get_digit_from_path(file) < 0:
+            if get_digit_from_path(file) < start_from_iter:
                 continue
             print(f'current experiment {experiment_name} - file: {file}')
             current_iteration = int(get_digit_from_path(file))
@@ -139,7 +148,6 @@ if __name__ == '__main__':
             iteration_result.trials_rewards = trials_rewards
             iteration_result.trials_max_rewards = trial_max_rewards
             iteration_results[current_iteration] = (iteration_result)
-            # save_iteration_stats(iteration_results, experiment_name)
             log_iteration_test_results(iteration_result, experiment_name)
 
 

@@ -16,7 +16,7 @@ class EvolutionHandler:
         with open('config.json') as config_file:
             config = json.load(config_file)
 
-        seed = None if config['evolution_handler']['seed'] == "None" else config['evolution_handler']['seed']
+        seed = config['evolution_handler']['random_seed']
         random.seed(seed)  # Ensure deterministic random generator
 
         self.mutation_probability = config['evolution_handler']['mutation_probability'] if "mutation_probability" in config['evolution_handler'] else 1 / self.horizon

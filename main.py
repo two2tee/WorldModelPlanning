@@ -16,7 +16,7 @@ from utility.rollout_handling.rollout_generator_factory import get_rollout_gener
 from tests_custom.test_suite_factory import get_model_tester, get_planning_tester
 from environment.environment_factory import get_environment
 from mdrnn.mdrnn_trainer import MDRNNTrainer as MDRNNTrainer
-from planning.simulation.simulated_planning_controller import SimulatedPlanningController
+from planning.simulated_planning_controller import SimulatedPlanningController
 from planning.agent_factory import get_planning_agent
 colorama_init()
 

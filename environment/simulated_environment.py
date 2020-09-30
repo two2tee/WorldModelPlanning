@@ -21,7 +21,6 @@ class SimulatedEnvironment:
         self.vae = vae.cpu()
         self.action_sampler = action_sampler.get_action_sampler(config)
         self.temperature = config['simulated_environment']['temperature']
-        self.is_render_reconstructions = config['visualization']['is_render_reconstructions']
 
         # mdrnn states
         self.current_latent_state_z = None
@@ -29,12 +28,9 @@ class SimulatedEnvironment:
         self._reset_states()
 
         # rendering
-        if self.is_render_reconstructions or config['is_play'] or config['test_suite']['is_run_model_tests'] \
-                                          or config['visualization']['is_render_simulation'] or config['visualization']['is_render_dream']:
-            self.monitor = None
-            self.figure = plt.figure(num=random.randint(0, 999))
-            self.figure_num = self.figure.number
-            self.current_reconstruction = None
+        self.monitor = None
+        self.figure_num = random.randint(0, 999)
+        self.current_reconstruction = None
 
     def step(self, action, hidden_state_h=None, latent_state_z=None, is_simulation_real_environment=True, is_reward_tensor=False):
         hidden_state_h = self.current_hidden_states if hidden_state_h is None else hidden_state_h
@@ -49,7 +45,7 @@ class SimulatedEnvironment:
         return next_z, r, d, next_h
 
     def reset(self):
-        if self.is_render_reconstructions:
+        if self.config['visualization']['is_render_dream']:
             self._reset_monitor()
         return self._reset_states()
 
@@ -132,8 +128,8 @@ class SimulatedEnvironment:
     def get_hidden_zeros_state(self):
         return 2 * [torch.zeros(1, self.config['mdrnn']['hidden_units']).unsqueeze(0)]
 
-    def sample(self, previous_action=None):
-        return self.action_sampler.sample(previous_action)
+    def sample(self):
+        return self.action_sampler.sample()
 
     def sample_logits(self):
         return self.action_sampler.sample_logits()

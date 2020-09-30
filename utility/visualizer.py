@@ -10,10 +10,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from utility.trajectories import get_trajectory
 
-fitness_figure = plt.figure(num=random.randint(0, 999))
-trajectory_figure = plt.figure(num=random.randint(0, 999))
-fitness_figure_num = fitness_figure.number
-trajectory_figure_num = trajectory_figure.number
+fitness_figure_num = random.randint(0, 999)
+trajectory_figure_num = random.randint(0, 999)
 
 
 class Visualizer:

@@ -4,6 +4,7 @@ from planning.simulation.random_mutation_hill_climbing_simulation import RMHC as
 from planning.simulation.random_simulation import RandomAgent as RANDOM_simulation
 from planning.simulation.gradient_hill_climbing_simulation import SGDHC as SGDHC_simulation
 
+
 def get_planning_agent(config):
     agent = config['planning']['planning_agent']
     print(agent)

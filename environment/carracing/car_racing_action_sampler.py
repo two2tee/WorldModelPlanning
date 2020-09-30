@@ -12,8 +12,8 @@ class CarRacingActionSampler(BaseActionSampler):
         self.max_gas = self.config['simulated_environment']['car_racing']['max_gas']
         self.max_brake = self.config['simulated_environment']['car_racing']['max_brake']
 
-    def sample(self, previous_action=None):  # Sampling: [ steer, gas, brake ] = [ [-1, +1] , [0, 1], [0, 1] ]
-        return self._continous_sample(previous_action) if not self.is_discretize_sampling else self.discrete_sample()
+    def sample(self):  # Sampling: [ steer, gas, brake ] = [ [-1, +1] , [0, 1], [0, 1] ]
+        return self._continous_sample() if not self.is_discretize_sampling else self.discrete_sample()
 
     def sample_logits(self):
         return [torch.randn(1, requires_grad=True),
@@ -30,13 +30,11 @@ class CarRacingActionSampler(BaseActionSampler):
         action[2] = brake
         return action
 
-    def _continous_sample(self, previous_action=None):
+    def _continous_sample(self):
         steer = np.random.uniform(low=-1, high=1)
-
         speed = random.uniform(self.max_brake, self.max_gas)
         gas = speed if speed > 0 else 0
-        # Brake: negative sign of gas to avoid simultaneous brake/gas driving
-        brake = abs(speed) if speed < 0 else 0
+        brake = abs(speed) if speed < 0 else 0  # Brake: negative sign of gas to avoid simultaneous brake/gas driving
         return [steer, gas, brake]
 
     def _standard_sample(self):
@@ -67,10 +65,8 @@ class CarRacingActionSampler(BaseActionSampler):
 
     def discrete_action_space(self, action=None):
         actions = set()
-        steer_steps = np.arange(start=-1.0, stop=1.0, step=self.steer_delta) #if action is None else [max(action[0] - self.steer_delta, -1), action[0], min(action[0] + self.steer_delta, 1)]
-        gas_steps = np.arange(start=-1.0, stop=1.0, step=self.gas_delta) # if action is None else [max(action[1] - self.gas_delta, -1), action[1], min(action[1] + self.gas_delta, 1)]
-        #steer_steps, gas_steps = [round(e, 1) for e in steer_steps], [round(e, 1) for e in gas_steps]  # Remove decimal precision
-
+        steer_steps = np.arange(start=-1.0, stop=1.0, step=self.steer_delta)
+        gas_steps = np.arange(start=-1.0, stop=1.0, step=self.gas_delta)
         for steer in steer_steps:
             for gas in gas_steps:
                 actions.add((steer, gas, 0)) if gas > 0 else actions.add((steer, 0, abs(gas)))  # negative sign gas = brake

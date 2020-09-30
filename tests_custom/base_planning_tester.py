@@ -30,7 +30,6 @@ class BasePlanningTester(BaseTester):
         self.planning_dir = join('tests_custom', config['test_suite']['planning_test_log_dir'])
         self.visualizer = Visualizer()
         self.is_render = config['visualization']['is_render']
-        self.is_render_simulation = self.config['visualization']['is_render_simulation']
         self.is_render_dream = self.config['visualization']['is_render_dream']
         self.is_logging = self.config['test_suite']['is_logging']
         self.session_name = self._make_session_name()
@@ -188,8 +187,6 @@ class BasePlanningTester(BaseTester):
                                                                                                           hidden_state,
                                                                                                           latent_state,
                                                                                                           is_simulation_real_environment=True)
-        if self.is_render_simulation:
-            self.simulated_environment.render()
 
         if self.is_render:
             environment.render()
@@ -204,7 +201,6 @@ class BasePlanningTester(BaseTester):
             latent, simulated_reward, simulated_is_done, hidden = self.simulated_environment.step(action, hidden,
                                                                                                   latent,
                                                                                                   is_simulation_real_environment=True)
-            # print(round(simulated_reward, 2), [round(action[0], 3), round(action[1], 3), round(action[2], 3)])
             total_reward += simulated_reward
             self.simulated_environment.render()
         print(f'expected dream reward: {round(total_reward, 2)}')
@@ -255,7 +251,7 @@ class BasePlanningTester(BaseTester):
 
     def _get_best_trial_action_and_reward(self, test_result):
         trial_seeds = None
-        if len(test_result) is 5: # 5 : testname, actions, finalrewards, elites, seeds
+        if len(test_result) is 5:  # 5 = testname, actions, finalrewards, elites, seeds
             test_name, trial_actions, trial_rewards, trial_elites, trial_seeds = test_result
         else:
             test_name, trial_actions, trial_rewards, trial_elites = test_result
