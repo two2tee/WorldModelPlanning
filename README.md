@@ -357,7 +357,7 @@ To extend the model tester
 
 ### Vizdoom integration issue
 The Vizdoom environment is partially implemented (env, datagenerator, planning_tester). 
-However Currently we are unable to train the MDRNN due to varying sequences. We need to extend the MDRNN to support variable 
+However Currently we are unable to train the MDRNN due to varying sequences. We need to extend the MDRNN and its trainer to support variable 
 sequences within the batches. This requires modification to the dataloader **utility/rollout_handling/mdrnn_loaders.py**
 and the mdrnn trainer **mdrnn/mdrnn_trainer.py**. What we will suggest is to try training the MDRNN with single batches 
 ``batch_size=1`` since that would bypass the issue. However you may get exceptions since we got them the last time we 
