@@ -364,7 +364,7 @@ tried to run it.
 
 ## Copyright 
 Copyright (c) 2020, - All Rights Reserved -
-All files are part of *the Evolutionary Planning on a Learned World Model* paper.
+All files are part of the *Evolutionary Planning in Latent Space* paper.
 Unauthorized distribution of the project, via any medium is strictly prohibited without the consensus of the authors and ITU.
 
 **Authors**: 
