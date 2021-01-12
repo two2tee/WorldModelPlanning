@@ -1,18 +1,16 @@
-# Evolutionary Planning on Learned World Model - Thesis Implementation
+# Evolutionary Planning in Latent Space (EPLS) - Paper Implementation
 
-This is the codebase for the Evolutionary Planning on Learned World Model thesis written by Thor V.A.N. Olesen and Dennis Thinh Tan Nguyen. 
-In this repository we have extended the system to support an iterative training procedure and a modular arcitecture to allow future extensions
-with new environments, test bases and planning algorithms. 
+Paper written by Thor V.A.N. Olesen, Dennis Thinh Tan Nguyen, Rasmus Berg Palm and Sebastian Risi: https://arxiv.org/abs/2011.11293
 
-The goal of this work is to use **evolution to do online-planning on a learned model of the world** and and is inspired by the Paper: Ha and Schmidhuber, "*World Models*", 2018.https://doi.org/10.5281/zenodo.1207631.
+This is the code repository used to demonstrate Evolutionary Planning in Latent Space on a Learned World Model. In this repository we have extended the World Models implementation to support an iterative training procedure with evolutionary planning, supported by a modular arcitecture to allow future extensions with new environments, test bases and planning algorithms. 
 
-Similarly to the paper we use a Convolutional Variational Auto Encoder (ConvVAE) to learn a representation of the world and a Mixture Density Recurrent Neural Network (MDRNN) to learn the dynamics of the world. 
+The goal of this work is to use **evolution to do online-planning in latent space on a learned model of the world** and and is inspired by the Paper: Ha and Schmidhuber, "*World Models*", 2018.https://doi.org/10.5281/zenodo.1207631.
 
-While the paper uses a simple linear policy network (controller) to produce actions, we use planning algorithms such as
- **Random Mutation Hill Climbing (RMHC)** and **Rolling Horizon Evolutionary Algorithm (RHEA)** in conjunction with the world model as a forward model to perform online planning. More information about RHEA can found in the paper:  Raluca D. Gaina and Sam Devlin, Simon M. Lucas, and Diego Perez-Liebana, "*Rolling Horizon Evolutionary Algorithms for General Video Game Playing*",  2020. https://arxiv.org/pdf/2003.12331.pdf
+Similar to the World Models paper, we use a Convolutional Variational Auto Encoder (ConvVAE) to learn a representation of the world and a Mixture Density Recurrent Neural Network (MDRNN) to learn the dynamics of the world. 
 
-Finally, we have focused our attention on planning in the single-player real-time game  ’Car-Racing’  by Open AI https://gym.openai.com/envs/CarRacing-v0/
-but the system is open for future extensions.
+While the paper uses a simple linear policy network (controller) to produce actions, we use evolutionary planning algorithms such as **Random Mutation Hill Climbing (RMHC)** and **Rolling Horizon Evolutionary Algorithm (RHEA)** with the world model as a forward model to perform online planning. More information about RHEA can found in the paper:  Raluca D. Gaina and Sam Devlin, Simon M. Lucas, and Diego Perez-Liebana, "*Rolling Horizon Evolutionary Algorithms for General Video Game Playing*",  2020. https://arxiv.org/pdf/2003.12331.pdf
+
+Finally, we have focused our attention on planning in the single-player real-time game  ’Car-Racing’  by Open AI https://gym.openai.com/envs/CarRacing-v0/ but the system supports other environments too.
 
 ## Prerequisites
 The system is written in Python 3.7 and utilizes PyTorch 1.5. Please refer to https://pytorch.org/ for PyTorch installation details. 
@@ -366,7 +364,7 @@ tried to run it.
 
 ## Copyright 
 Copyright (c) 2020, - All Rights Reserved -
-All files are part of *the Evolutionary Planning on a Learned World Model* thesis.
+All files are part of *the Evolutionary Planning on a Learned World Model* paper.
 Unauthorized distribution of the project, via any medium is strictly prohibited without the consensus of the authors and ITU.
 
 **Authors**: 
